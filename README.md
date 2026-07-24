@@ -172,3 +172,8 @@ pnpm run cli -- run https://example.com --tag after-deploy --insight-baseline be
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+> [!IMPORTANT]
+> This repository was merged into
+> [`sass-maker/fleet-workspace`](https://github.com/sass-maker/fleet-workspace)
+> at `fleet-ops/psi-swarm/`. It is retained for history and attribution only;
+> do not clone it for Fleet setup or development.
