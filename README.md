@@ -1,5 +1,12 @@
 # psi-swarm
 
+> [!IMPORTANT]
+> This public repository is preserved for history and attribution. The
+> maintained implementation has moved to a private Foundry monorepo under
+> `foundry/tools/psi-swarm`. It is created and maintained by
+> [Sarthak Agrawal](https://sarthakagrawal.dev). Current product context:
+> [SaaS Maker](https://sassmaker.com/p/psi-swarm).
+
 > Lighthouse, run many times across realistic device/network presets. See the **p50 / p75 / p90 / p99** of your Web Vitals, not one noisy point.
 
 A single PageSpeed Insights run tells you almost nothing — two runs on the same URL can disagree by 30%+ on LCP because of network jitter, CPU contention, third-party scripts, and server-side variance. `psi-swarm` runs the same audit many times across a matrix of realistic conditions and reports the **shape** of the distribution, not just one point.
@@ -172,8 +179,3 @@ pnpm run cli -- run https://example.com --tag after-deploy --insight-baseline be
 ## License
 
 MIT — see [LICENSE](./LICENSE).
-> [!IMPORTANT]
-> This repository was merged into
-> [`sass-maker/fleet-workspace`](https://github.com/sass-maker/fleet-workspace)
-> at `fleet-ops/psi-swarm/`. It is retained for history and attribution only;
-> do not clone it for Fleet setup or development.
