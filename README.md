@@ -2,8 +2,9 @@
 
 > [!IMPORTANT]
 > This public repository is preserved for history and attribution. The
-> maintained implementation has moved to a private Foundry monorepo under
-> `foundry/tools/psi-swarm`. It is created and maintained by
+> maintained implementation is
+> [`foundry/tools/psi-swarm`](https://github.com/sass-maker/fleet-workspace/tree/main/foundry/tools/psi-swarm)
+> in the private Fleet Workspace. It is created and maintained by
 > [Sarthak Agrawal](https://sarthakagrawal.dev). Current product context:
 > [SaaS Maker](https://sassmaker.com/p/psi-swarm).
 
