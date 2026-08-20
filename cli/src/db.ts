@@ -65,6 +65,47 @@ export interface WatchlistEntry {
   added_at: number;
 }
 
+export interface DomainRatingRow {
+  domain: string;
+  rating: number | null;
+  fetchedAt: number;
+}
+
+export interface TagSummary {
+  tag: string;
+  count: number;
+  last: number;
+}
+
+export interface UrlSummary {
+  url: string;
+  count: number;
+  last: number;
+}
+
+export interface ProjectSummary {
+  url: string;
+  totalRuns: number;
+  lastRunAt: number;
+  mobileLcpP75?: number;
+  desktopLcpP75?: number;
+  mobilePerfScoreP50?: number;
+  desktopPerfScoreP50?: number;
+  cls?: number;
+}
+
+export interface HistoryRow {
+  started_at: number;
+  preset: string;
+  lcp: number | null;
+  cls: number | null;
+  tbt: number | null;
+  fcp: number | null;
+  ttfb: number | null;
+  performance_score: number | null;
+  tag: string | null;
+}
+
 export class HistoryDB {
   private db: Database.Database;
 
@@ -142,7 +183,10 @@ export class HistoryDB {
    * nullable so a NULL row can negative-cache "Ahrefs has no rating for this domain".
    */
   private migrateDomainRatingsNullable() {
-    const cols = this.db.pragma('table_info(domain_ratings)') as Array<{ name: string; notnull: number }>;
+    const cols = this.db.pragma('table_info(domain_ratings)') as Array<{
+      name: string;
+      notnull: number;
+    }>;
     const ratingCol = cols.find((c) => c.name === 'rating');
     if (!ratingCol || ratingCol.notnull === 0) return;
     this.db.exec(`
@@ -162,41 +206,47 @@ export class HistoryDB {
   }
 
   getMeta(key: string): string | null {
-    const row = this.db.prepare(`SELECT value FROM meta WHERE key = ?`).get(key) as { value: string } | undefined;
+    const row = this.db.prepare(`SELECT value FROM meta WHERE key = ?`).get(key) as
+      | { value: string }
+      | undefined;
     return row?.value ?? null;
   }
 
   setMeta(key: string, value: string): void {
     this.db
-      .prepare(`INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+      .prepare(
+        `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      )
       .run(key, value);
   }
 
   /** rating === null is a negative-cache sentinel: Ahrefs reported no rating. */
-  getDomainRating(domain: string): { domain: string; rating: number | null; fetchedAt: number } | null {
+  getDomainRating(domain: string): DomainRatingRow | null {
     const row = this.db
-      .prepare(`SELECT domain, rating, fetched_at as fetchedAt FROM domain_ratings WHERE domain = ?`)
-      .get(domain.toLowerCase()) as { domain: string; rating: number | null; fetchedAt: number } | undefined;
+      .prepare(
+        `SELECT domain, rating, fetched_at as fetchedAt FROM domain_ratings WHERE domain = ?`
+      )
+      .get(domain.toLowerCase()) as DomainRatingRow | undefined;
     return row ?? null;
   }
 
-  domainRatings(): Map<string, { domain: string; rating: number | null; fetchedAt: number }> {
+  domainRatings(): Map<string, DomainRatingRow> {
     const rows = this.db
       .prepare(`SELECT domain, rating, fetched_at as fetchedAt FROM domain_ratings`)
-      .all() as Array<{ domain: string; rating: number | null; fetchedAt: number }>;
-    const out = new Map<string, { domain: string; rating: number | null; fetchedAt: number }>();
+      .all() as DomainRatingRow[];
+    const out = new Map<string, DomainRatingRow>();
     for (const row of rows) out.set(row.domain.toLowerCase(), row);
     return out;
   }
 
-  upsertDomainRating(entry: { domain: string; rating: number | null; fetchedAt: number }): void {
+  upsertDomainRating(entry: DomainRatingRow): void {
     this.db
       .prepare(
         `INSERT INTO domain_ratings (domain, rating, fetched_at)
          VALUES (@domain, @rating, @fetchedAt)
          ON CONFLICT(domain) DO UPDATE SET
            rating = excluded.rating,
-           fetched_at = excluded.fetched_at`,
+           fetched_at = excluded.fetched_at`
       )
       .run({
         domain: entry.domain.toLowerCase(),
@@ -254,9 +304,7 @@ export class HistoryDB {
   recentRuns(url: string, preset?: string, limit = 500): RunRow[] {
     if (preset) {
       return this.db
-        .prepare(
-          `SELECT * FROM runs WHERE url = ? AND preset = ? ORDER BY started_at DESC LIMIT ?`,
-        )
+        .prepare(`SELECT * FROM runs WHERE url = ? AND preset = ? ORDER BY started_at DESC LIMIT ?`)
         .all(url, preset, limit) as RunRow[];
     }
     return this.db
@@ -266,60 +314,58 @@ export class HistoryDB {
 
   runsByTag(url: string, tag: string): RunRow[] {
     return this.db
-      .prepare(
-        `SELECT * FROM runs WHERE url = ? AND tag = ? ORDER BY started_at DESC`,
-      )
+      .prepare(`SELECT * FROM runs WHERE url = ? AND tag = ? ORDER BY started_at DESC`)
       .all(url, tag) as RunRow[];
   }
 
   /** Distinct tags for a URL, with run count and most-recent timestamp. */
-  tagsForUrl(url: string): { tag: string; count: number; last: number }[] {
+  tagsForUrl(url: string): TagSummary[] {
     return this.db
       .prepare(
         `SELECT tag, COUNT(*) as count, MAX(started_at) as last
          FROM runs WHERE url = ? AND tag IS NOT NULL AND tag != ''
-         GROUP BY tag ORDER BY last DESC`,
+         GROUP BY tag ORDER BY last DESC`
       )
-      .all(url) as { tag: string; count: number; last: number }[];
+      .all(url) as TagSummary[];
   }
 
-  urls(): { url: string; count: number; last: number }[] {
+  urls(): UrlSummary[] {
     return this.db
       .prepare(
         `SELECT url, COUNT(*) as count, MAX(started_at) as last
-         FROM runs GROUP BY url ORDER BY last DESC`,
+         FROM runs GROUP BY url ORDER BY last DESC`
       )
-      .all() as { url: string; count: number; last: number }[];
+      .all() as UrlSummary[];
   }
 
   /**
    * For each tracked URL, return aggregate stats useful for a fleet dashboard:
-   * total runs, last run time, plus median LCP/CLS/perf-score over the last `windowDays`
-   * for both mobile-mid and desktop presets.
+   * total runs, last run time, plus p75 LCP/CLS and p50 perf-score over the last
+   * `windowDays` for both mobile-mid and desktop presets.
+   *
+   * Outcomes are batch-aware: runs are grouped by tag (swarm batch), p75 is
+   * computed within each batch, and the latest batch's p75 is the projected
+   * outcome. This prevents the Console from oscillating on individual-sample
+   * noise. Runs without a tag are treated as single-sample batches.
    */
-  projects(windowDays = 30): Array<{
-    url: string;
-    totalRuns: number;
-    lastRunAt: number;
-    mobileLcpP75?: number;
-    desktopLcpP75?: number;
-    mobilePerfScoreP50?: number;
-    desktopPerfScoreP50?: number;
-    cls?: number;
-  }> {
+  projects(windowDays = 30): ProjectSummary[] {
     const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
     const urls = this.db
-      .prepare(`SELECT url, COUNT(*) as count, MAX(started_at) as last FROM runs GROUP BY url ORDER BY last DESC`)
-      .all() as { url: string; count: number; last: number }[];
+      .prepare(
+        `SELECT url, COUNT(*) as count, MAX(started_at) as last FROM runs GROUP BY url ORDER BY last DESC`
+      )
+      .all() as UrlSummary[];
 
     const stmt = this.db.prepare(
-      `SELECT lcp, cls, performance_score FROM runs
+      `SELECT lcp, cls, performance_score, tag, started_at FROM runs
        WHERE url = ? AND preset = ? AND started_at >= ? AND error IS NULL
-       ORDER BY started_at DESC LIMIT 200`,
+       ORDER BY started_at DESC LIMIT 200`
     );
 
     const percentile = (vs: number[], p: number): number | undefined => {
-      const xs = vs.filter((v): v is number => typeof v === 'number' && Number.isFinite(v)).sort((a, b) => a - b);
+      const xs = vs
+        .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+        .sort((a, b) => a - b);
       if (xs.length === 0) return undefined;
       const idx = (p / 100) * (xs.length - 1);
       const lo = Math.floor(idx);
@@ -329,23 +375,59 @@ export class HistoryDB {
       return xs[lo] * (1 - w) + xs[hi] * w;
     };
 
+    interface BatchRow {
+      lcp: number | null;
+      cls: number | null;
+      performance_score: number | null;
+      tag: string | null;
+      started_at: number;
+    }
+
+    // Group rows by batch tag (null tag = each run is its own batch), compute
+    // p75/p50 within each batch, then pick the latest batch's aggregate.
+    function latestBatchPercentile(
+      rows: BatchRow[],
+      metric: 'lcp' | 'cls' | 'performance_score',
+      p: number
+    ): number | undefined {
+      if (rows.length === 0) return undefined;
+      const batches = new Map<string, BatchRow[]>();
+      for (const r of rows) {
+        const key = r.tag ?? `__untagged_${r.started_at}`;
+        const arr = batches.get(key) ?? [];
+        arr.push(r);
+        batches.set(key, arr);
+      }
+      // Find the latest batch by max started_at.
+      let latestKey: string | null = null;
+      let latestStartedAt = -1;
+      for (const [key, batch] of batches) {
+        const batchMax = Math.max(...batch.map((r) => r.started_at));
+        if (batchMax > latestStartedAt) {
+          latestStartedAt = batchMax;
+          latestKey = key;
+        }
+      }
+      if (!latestKey) return undefined;
+      const batch = batches.get(latestKey)!;
+      const vals = batch
+        .map((r) => r[metric])
+        .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+      return percentile(vals, p);
+    }
+
     return urls.map((u) => {
-      const mobile = stmt.all(u.url, 'mobile-mid', cutoff) as Array<{ lcp: number | null; cls: number | null; performance_score: number | null }>;
-      const desktop = stmt.all(u.url, 'desktop', cutoff) as Array<{ lcp: number | null; cls: number | null; performance_score: number | null }>;
-      const mlcp = mobile.map((r) => r.lcp).filter((v): v is number => typeof v === 'number');
-      const dlcp = desktop.map((r) => r.lcp).filter((v): v is number => typeof v === 'number');
-      const mscore = mobile.map((r) => r.performance_score).filter((v): v is number => typeof v === 'number');
-      const dscore = desktop.map((r) => r.performance_score).filter((v): v is number => typeof v === 'number');
-      const allCls = [...mobile, ...desktop].map((r) => r.cls).filter((v): v is number => typeof v === 'number');
+      const mobile = stmt.all(u.url, 'mobile-mid', cutoff) as BatchRow[];
+      const desktop = stmt.all(u.url, 'desktop', cutoff) as BatchRow[];
       return {
         url: u.url,
         totalRuns: u.count,
         lastRunAt: u.last,
-        mobileLcpP75: percentile(mlcp, 75),
-        desktopLcpP75: percentile(dlcp, 75),
-        mobilePerfScoreP50: percentile(mscore, 50),
-        desktopPerfScoreP50: percentile(dscore, 50),
-        cls: percentile(allCls, 75),
+        mobileLcpP75: latestBatchPercentile(mobile, 'lcp', 75),
+        desktopLcpP75: latestBatchPercentile(desktop, 'lcp', 75),
+        mobilePerfScoreP50: latestBatchPercentile(mobile, 'performance_score', 50),
+        desktopPerfScoreP50: latestBatchPercentile(desktop, 'performance_score', 50),
+        cls: latestBatchPercentile([...mobile, ...desktop], 'cls', 75),
       };
     });
   }
@@ -357,7 +439,7 @@ export class HistoryDB {
   recentRunIds(url: string, preset: string, limit = 1): number[] {
     const rows = this.db
       .prepare(
-        `SELECT id FROM runs WHERE url = ? AND preset = ? AND error IS NULL ORDER BY started_at DESC LIMIT ?`,
+        `SELECT id FROM runs WHERE url = ? AND preset = ? AND error IS NULL ORDER BY started_at DESC LIMIT ?`
       )
       .all(url, preset, limit) as Array<{ id: number }>;
     return rows.map((r) => r.id);
@@ -386,7 +468,7 @@ export class HistoryDB {
           comparison_notes = excluded.comparison_notes,
           adapter = excluded.adapter,
           artifact_path = excluded.artifact_path,
-          created_at = excluded.created_at`,
+          created_at = excluded.created_at`
       )
       .run({
         runId: input.runId,
@@ -400,7 +482,10 @@ export class HistoryDB {
       });
   }
 
-  runInsightsForUrl(url: string, limit = 20): Array<RunInsightRow & { preset: string; started_at: number }> {
+  runInsightsForUrl(
+    url: string,
+    limit = 20
+  ): Array<RunInsightRow & { preset: string; started_at: number }> {
     return this.db
       .prepare(
         `SELECT ri.*, r.preset, r.started_at
@@ -408,7 +493,7 @@ export class HistoryDB {
          JOIN runs r ON r.id = ri.run_id
          WHERE r.url = ?
          ORDER BY r.started_at DESC
-         LIMIT ?`,
+         LIMIT ?`
       )
       .all(url, limit) as Array<RunInsightRow & { preset: string; started_at: number }>;
   }
@@ -435,7 +520,7 @@ export class HistoryDB {
           baseline_tag = excluded.baseline_tag,
           lcp_threshold_ms = excluded.lcp_threshold_ms,
           score_threshold = excluded.score_threshold,
-          stale_days = excluded.stale_days`,
+          stale_days = excluded.stale_days`
       )
       .run({
         url: entry.url,
@@ -460,28 +545,13 @@ export class HistoryDB {
       .all() as WatchlistEntry[];
   }
 
-  history(url: string, limit = 60): Array<{
-    started_at: number;
-    preset: string;
-    lcp: number | null;
-    cls: number | null;
-    tbt: number | null;
-    fcp: number | null;
-    ttfb: number | null;
-    performance_score: number | null;
-    tag: string | null;
-  }> {
+  history(url: string, limit = 60): HistoryRow[] {
     return this.db
       .prepare(
         `SELECT started_at, preset, lcp, cls, tbt, fcp, ttfb, performance_score, tag
-         FROM runs WHERE url = ? AND error IS NULL ORDER BY started_at DESC LIMIT ?`,
+         FROM runs WHERE url = ? AND error IS NULL ORDER BY started_at DESC LIMIT ?`
       )
-      .all(url, limit) as Array<{
-        started_at: number; preset: string;
-        lcp: number | null; cls: number | null; tbt: number | null;
-        fcp: number | null; ttfb: number | null; performance_score: number | null;
-        tag: string | null;
-      }>;
+      .all(url, limit) as HistoryRow[];
   }
 
   close() {

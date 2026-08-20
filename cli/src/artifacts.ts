@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { RunResultWithArtifact } from './runner.js';
 
-export const ARTIFACTS_DIR = join(homedir(), '.psi-swarm', 'artifacts');
+const ARTIFACTS_DIR = join(homedir(), '.psi-swarm', 'artifacts');
 
-export interface SwarmArtifactBundle {
+interface SwarmArtifactBundle {
   url: string;
   tag?: string;
   exportedAt: number;
@@ -25,11 +25,11 @@ function slugify(url: string): string {
 }
 
 /** Stable local path for one preset's Lighthouse capture bundle. */
-export function exportPresetArtifacts(
+function exportPresetArtifacts(
   url: string,
   presetName: string,
   results: RunResultWithArtifact[],
-  opts: { tag?: string; swarmId?: string } = {},
+  opts: { tag?: string; swarmId?: string } = {}
 ): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const swarmKey = opts.swarmId ?? `${stamp}-${slugify(url)}`;
@@ -56,7 +56,7 @@ export function exportPresetArtifacts(
 export function exportSwarmArtifacts(
   url: string,
   results: RunResultWithArtifact[],
-  opts: { tag?: string; swarmId?: string } = {},
+  opts: { tag?: string; swarmId?: string } = {}
 ): Map<string, string> {
   const byPreset = new Map<string, RunResultWithArtifact[]>();
   for (const r of results) {

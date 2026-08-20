@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "root": true,
+  "extends": [
+    "ultracite/biome/react",
+    "ultracite/biome/astro",
+    "ultracite/biome/vitest",
+    "./biome.base.json"
+  ],
+  "formatter": {
+    "enabled": true
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "files": {
+    "includes": [
+      "!!**/node_modules",
+      "!!**/.astro",
+      "!!**/dist",
+      "!!**/docs-dist",
+      "!!**/public",
+      "!!**/coverage",
+      "!!**/artifacts",
+      "!!**/reports",
+      "!!**/pnpm-lock.yaml",
+      "**"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "useLiteralKeys": "off",
+        "useOptionalChain": "off"
+      },
+      "correctness": {
+        "useJsxKeyInIterable": "off"
+      },
+      "style": {
+        "noDoneCallback": "off",
+        "noNonNullAssertion": "off",
+        "useImportType": "off",
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noLeakedRender": "off",
+        "noUnknownAttribute": "off"
+      }
+    }
+  }
+}

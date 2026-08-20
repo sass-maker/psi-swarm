@@ -24,7 +24,9 @@ function MetricCompare({
       <span className="text-[var(--color-dim)]">{label}</span>
       <span className="mono text-right">{fmt(before)}</span>
       <span className="mono text-right">{fmt(after)}</span>
-      <span className={`mono text-right text-xs ${improved ? 'text-[var(--color-good)]' : 'text-[var(--color-warn)]'}`}>
+      <span
+        className={`mono text-right text-xs ${improved ? 'text-[var(--color-good)]' : 'text-[var(--color-warn)]'}`}
+      >
         {deltaLabel(before, after, lowerIsBetter)}
       </span>
     </div>
@@ -35,7 +37,8 @@ export default function GalleryView() {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] p-4 text-sm text-[var(--color-dim)]">
-        Static fixtures only — deterministic demo data for evaluating psi-swarm without running a swarm or exposing local history.
+        Static fixtures only — deterministic demo data for evaluating psi-swarm without running a
+        swarm or exposing local history.
       </div>
 
       {GALLERY_ENTRIES.map((entry) => (
@@ -63,7 +66,12 @@ export default function GalleryView() {
               <span className="text-right">{entry.after.tag}</span>
               <span className="text-right">Δ</span>
             </div>
-            <MetricCompare label="LCP p75" before={entry.before.lcpP75Ms} after={entry.after.lcpP75Ms} unit="ms" />
+            <MetricCompare
+              label="LCP p75"
+              before={entry.before.lcpP75Ms}
+              after={entry.after.lcpP75Ms}
+              unit="ms"
+            />
             <MetricCompare
               label="Perf score p75"
               before={entry.before.perfScoreP75}
@@ -71,8 +79,18 @@ export default function GalleryView() {
               unit="score"
               lowerIsBetter={false}
             />
-            <MetricCompare label="CLS p75" before={entry.before.clsP75} after={entry.after.clsP75} unit="index" />
-            <MetricCompare label="TBT p75" before={entry.before.tbtP75Ms} after={entry.after.tbtP75Ms} unit="ms" />
+            <MetricCompare
+              label="CLS p75"
+              before={entry.before.clsP75}
+              after={entry.after.clsP75}
+              unit="index"
+            />
+            <MetricCompare
+              label="TBT p75"
+              before={entry.before.tbtP75Ms}
+              after={entry.after.tbtP75Ms}
+              unit="ms"
+            />
           </div>
         </article>
       ))}

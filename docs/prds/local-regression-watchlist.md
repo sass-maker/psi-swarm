@@ -1,3 +1,8 @@
+---
+title: Local Regression Watchlist
+description: Local-first watchlist over tagged SQLite history with a regression queue.
+---
+
 # Local Regression Watchlist
 
 **Status:** Shipped · **Release:** v0.4.0 · **Updated:** 2026-06-13

@@ -96,9 +96,7 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
             const cur = presets.get(e.preset.name);
             if (cur) {
               const failed = cur.failed + (e.result.error ? 1 : 0);
-              const lcps = e.result.metrics?.lcp
-                ? [...cur.lcps, e.result.metrics.lcp]
-                : cur.lcps;
+              const lcps = e.result.metrics?.lcp ? [...cur.lcps, e.result.metrics.lcp] : cur.lcps;
               presets.set(e.preset.name, {
                 ...cur,
                 done: cur.done + 1,
@@ -116,6 +114,9 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
             };
           }
           case 'all-complete': {
+            return { ...s, finishedAt: Date.now(), results: e.results };
+          }
+          case 'cancelled': {
             return { ...s, finishedAt: Date.now(), results: e.results };
           }
           default:
@@ -145,10 +146,12 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1}>
-        <Text bold color="cyan">psi-swarm</Text>
-        <Text color="gray">  ·  </Text>
+        <Text bold color="cyan">
+          psi-swarm
+        </Text>
+        <Text color="gray"> · </Text>
         <Text>{url}</Text>
-        <Text color="gray">  ·  </Text>
+        <Text color="gray"> · </Text>
         <Text>{state.parallel === 1 ? 'serial' : `${state.parallel}× parallel`}</Text>
       </Box>
       {Array.from(state.presets.values()).map((p) => {
@@ -165,7 +168,10 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
             </Box>
             <Box width={18}>
               <Text>{progressBar(p.done, p.total, 12)}</Text>
-              <Text color="gray"> {p.done}/{p.total}</Text>
+              <Text color="gray">
+                {' '}
+                {p.done}/{p.total}
+              </Text>
             </Box>
             <Box width={18}>
               <Text color="gray">last </Text>
@@ -174,7 +180,7 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
             <Box width={26}>
               <Text color="gray">p50 </Text>
               <Text color={lcpColor(p50)}>{fmtMs(p50)}</Text>
-              <Text color="gray">  p90 </Text>
+              <Text color="gray"> p90 </Text>
               <Text color={lcpColor(p90)}>{fmtMs(p90)}</Text>
             </Box>
             {p.failed > 0 && (
@@ -187,18 +193,20 @@ const ProgressApp: React.FC<ProgressAppProps> = ({
       })}
       <Box marginTop={1}>
         <Text color="gray">Total: </Text>
-        <Text>{state.totalDone}/{state.total}</Text>
-        <Text color="gray">    Elapsed: </Text>
+        <Text>
+          {state.totalDone}/{state.total}
+        </Text>
+        <Text color="gray"> Elapsed: </Text>
         <Text>{(elapsedMs / 1000).toFixed(1)}s</Text>
         {!state.finishedAt && state.totalDone > 0 && (
           <>
-            <Text color="gray">    ETA: </Text>
+            <Text color="gray"> ETA: </Text>
             <Text>{(etaMs / 1000).toFixed(0)}s</Text>
           </>
         )}
         {state.finishedAt && (
           <>
-            <Text color="gray">    </Text>
+            <Text color="gray"> </Text>
             <Text color="green">done</Text>
           </>
         )}
@@ -212,7 +220,7 @@ export function renderProgress(
   url: string,
   presets: Preset[],
   runsPerPreset: number,
-  parallel: number,
+  parallel: number
 ): Promise<RunResultWithArtifact[]> {
   return new Promise((resolve) => {
     const { unmount } = render(
@@ -228,7 +236,7 @@ export function renderProgress(
             resolve(results);
           }, 50);
         }}
-      />,
+      />
     );
   });
 }

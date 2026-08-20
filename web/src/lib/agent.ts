@@ -1,4 +1,4 @@
-export interface MachineProfile {
+interface MachineProfile {
   cores: number;
   totalMemGB: number;
   recommendedParallel: number;
@@ -10,7 +10,7 @@ export interface HealthResponse {
   machine: MachineProfile;
 }
 
-export interface Preset {
+interface Preset {
   name: string;
   label: string;
   formFactor: 'mobile' | 'desktop';
@@ -52,13 +52,18 @@ export type RunnerEvent =
       result: { metrics?: RunMetrics; error?: string };
     }
   | { type: 'preset-complete'; preset: { name: string } }
-  | { type: 'all-complete'; elapsedMs: number };
+  | { type: 'all-complete'; elapsedMs: number }
+  | { type: 'cancelled'; results: { metrics?: RunMetrics; error?: string }[] };
 
-const DEFAULT_AGENT_URLS = ['http://127.0.0.1:7777', 'http://127.0.0.1:7778', 'http://localhost:7777'];
+const DEFAULT_AGENT_URLS = [
+  'http://127.0.0.1:7777',
+  'http://127.0.0.1:7778',
+  'http://localhost:7777',
+];
 
 const AGENT_STORAGE_KEY = 'psi-swarm:agent-url';
 
-export function rememberedAgentUrl(): string | null {
+function rememberedAgentUrl(): string | null {
   try {
     return window.localStorage.getItem(AGENT_STORAGE_KEY);
   } catch {
@@ -106,7 +111,9 @@ export interface AgentConnection {
  * A successful connection is remembered in localStorage so the next visit
  * reconnects automatically with a single request.
  */
-export async function connectToAgent(mode: 'auto' | 'explicit' = 'auto'): Promise<AgentConnection | null> {
+export async function connectToAgent(
+  mode: 'auto' | 'explicit' = 'auto'
+): Promise<AgentConnection | null> {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const preferred = params.get('agent') ?? undefined;
@@ -133,9 +140,9 @@ function withToken(url: string, token?: string): string {
   return u.toString();
 }
 
-export async function probeAgent(
+async function probeAgent(
   candidates: string[] = DEFAULT_AGENT_URLS,
-  opts: { preferredUrl?: string; token?: string } = {},
+  opts: { preferredUrl?: string; token?: string } = {}
 ): Promise<{ url: string; health: HealthResponse } | null> {
   const ordered = opts.preferredUrl
     ? [opts.preferredUrl, ...candidates.filter((c) => c !== opts.preferredUrl)]
@@ -154,7 +161,10 @@ export async function probeAgent(
 }
 
 export class AgentClient {
-  constructor(public baseUrl: string, private token?: string) {}
+  constructor(
+    public baseUrl: string,
+    private token?: string
+  ) {}
 
   requestUrl(path: string, params: Record<string, string | number | undefined> = {}): string {
     const u = new URL(path, this.baseUrl);
@@ -191,7 +201,9 @@ export class AgentClient {
     return r.json();
   }
 
-  async runStatus(runId: string): Promise<{ status: 'pending' | 'running' | 'complete' | 'error' }> {
+  async runStatus(
+    runId: string
+  ): Promise<{ status: 'pending' | 'running' | 'complete' | 'error' | 'cancelled' }> {
     const r = await fetch(this.requestUrl(`/api/runs/${runId}`));
     if (!r.ok) throw new Error(`runStatus: HTTP ${r.status}`);
     return r.json();
@@ -200,9 +212,26 @@ export class AgentClient {
   async waitForRunCompletion(runId: string, pollIntervalMs = 1_500): Promise<void> {
     for (;;) {
       const status = await this.runStatus(runId);
-      if (status.status === 'complete' || status.status === 'error') return;
+      if (
+        status.status === 'complete' ||
+        status.status === 'error' ||
+        status.status === 'cancelled'
+      )
+        return;
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
+  }
+
+  async cancelRun(runId: string): Promise<{ ok: boolean; runId: string }> {
+    const r = await fetch(this.requestUrl(`/api/runs/${runId}/cancel`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error(`cancelRun: HTTP ${r.status} ${txt}`);
+    }
+    return r.json();
   }
 
   subscribe(runId: string, onEvent: (e: RunnerEvent) => void): () => void {
@@ -221,19 +250,41 @@ export class AgentClient {
     return () => es.close();
   }
 
-  async aggregate(runId: string): Promise<{ byPreset: Record<string, Record<string, { n: number; mean: number; stddev: number; min: number; max: number; p50: number; p75: number; p90: number; p99: number } | null>> }> {
+  async aggregate(runId: string): Promise<{
+    byPreset: Record<
+      string,
+      Record<
+        string,
+        {
+          n: number;
+          mean: number;
+          stddev: number;
+          min: number;
+          max: number;
+          p50: number;
+          p75: number;
+          p90: number;
+          p99: number;
+        } | null
+      >
+    >;
+  }> {
     const r = await fetch(this.requestUrl('/api/aggregate', { runId }));
     if (!r.ok) throw new Error(`aggregate: HTTP ${r.status}`);
     return r.json();
   }
 
-  async suggestions(runId: string): Promise<{ links: { url: string; path: string; text: string }[]; sources: string[] }> {
+  async suggestions(
+    runId: string
+  ): Promise<{ links: { url: string; path: string; text: string }[]; sources: string[] }> {
     const r = await fetch(this.requestUrl(`/api/runs/${runId}/suggestions`));
     if (!r.ok) throw new Error(`suggestions: HTTP ${r.status}`);
     return r.json();
   }
 
-  async tags(url: string): Promise<{ url: string; tags: { tag: string; count: number; last: number }[] }> {
+  async tags(
+    url: string
+  ): Promise<{ url: string; tags: { tag: string; count: number; last: number }[] }> {
     const r = await fetch(this.requestUrl('/api/tags', { url }));
     if (!r.ok) throw new Error(`tags: HTTP ${r.status}`);
     return r.json();
@@ -243,7 +294,7 @@ export class AgentClient {
     url: string,
     baseline: string,
     candidate: string,
-    pct: 'p50' | 'p75' | 'p90' | 'p99' = 'p75',
+    pct: 'p50' | 'p75' | 'p90' | 'p99' = 'p75'
   ): Promise<CompareResponse> {
     const r = await fetch(this.requestUrl('/api/compare', { url, baseline, candidate, pct }));
     if (!r.ok) throw new Error(`compare: HTTP ${r.status}`);
@@ -259,7 +310,7 @@ export class AgentClient {
   subscribeReason(
     runId: string,
     onEvent: (e: ReasonEvent) => void,
-    opts: { model?: string; backend?: 'openai' | 'local-ai' | 'auto' } = {},
+    opts: { model?: string; backend?: 'openai' | 'local-ai' | 'auto' } = {}
   ): () => void {
     const params = new URLSearchParams();
     if (opts.model) params.set('model', opts.model);

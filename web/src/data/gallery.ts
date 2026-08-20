@@ -1,4 +1,4 @@
-export interface GalleryMetricSnapshot {
+interface GalleryMetricSnapshot {
   tag: string;
   preset: string;
   lcpP75Ms: number;
@@ -25,7 +25,8 @@ export const GALLERY_ENTRIES: GalleryEntry[] = [
     id: 'astro-overlay',
     title: 'Marketing landing → Astro overlay',
     url: 'https://example.com/',
-    summary: 'Moved a static marketing hero off a dynamic Worker shell onto prerendered Astro HTML.',
+    summary:
+      'Moved a static marketing hero off a dynamic Worker shell onto prerendered Astro HTML.',
     narrative:
       'The baseline Worker route paid SSR + hydration cost before the hero rendered. The overlay pattern prerendered the LCP block and inlined critical CSS, cutting mobile LCP p75 by ~1.1s without changing the product URL.',
     before: {

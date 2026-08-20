@@ -1,0 +1,61 @@
+{
+  "name": "psi-swarm",
+  "version": "1",
+  "url": "https://performance.sassmaker.com",
+  "llms": "https://performance.sassmaker.com/llms.txt",
+  "llmsFull": "https://performance.sassmaker.com/llms-full.txt",
+  "sitemap": "https://performance.sassmaker.com/sitemap.xml",
+  "robots": "https://performance.sassmaker.com/robots.txt",
+  "markdown": {
+    "suffix": ".md",
+    "negotiation": true
+  },
+  "surfaces": [
+    {
+      "id": "home",
+      "url": "https://performance.sassmaker.com/",
+      "md": "https://performance.sassmaker.com/index.md",
+      "kind": "static",
+      "description": "Product home"
+    },
+    {
+      "id": "projects",
+      "url": "https://performance.sassmaker.com/projects/",
+      "md": "https://performance.sassmaker.com/projects.md",
+      "kind": "static",
+      "description": "Per-project results"
+    },
+    {
+      "id": "compare",
+      "url": "https://performance.sassmaker.com/compare/",
+      "md": "https://performance.sassmaker.com/compare.md",
+      "kind": "static",
+      "description": "Compare two tagged swarms across percentile results"
+    },
+    {
+      "id": "watchlist",
+      "url": "https://performance.sassmaker.com/watchlist/",
+      "md": "https://performance.sassmaker.com/watchlist.md",
+      "kind": "static",
+      "description": "Review locally tracked performance regressions"
+    },
+    {
+      "id": "demo-gallery",
+      "url": "https://performance.sassmaker.com/gallery/",
+      "md": "https://performance.sassmaker.com/gallery.md",
+      "kind": "static",
+      "description": "Explore static before-and-after performance examples"
+    },
+    {
+      "id": "changelog",
+      "url": "https://performance.sassmaker.com/changelog/",
+      "md": "https://performance.sassmaker.com/changelog.md",
+      "kind": "static",
+      "description": "Verified psi-swarm product and release history"
+    }
+  ],
+  "auth": {
+    "public": true,
+    "notes": "Auth-walled app routes are not agent-indexed unless listed here."
+  }
+}

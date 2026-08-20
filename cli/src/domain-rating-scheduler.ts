@@ -2,8 +2,8 @@ import { HistoryDB } from './db.js';
 import { fetchDomainRatings, DOMAIN_RATING_TTL_MS } from './ahrefs.js';
 import { hostnameFromUrl, shouldFetchDomainRating } from './domain.js';
 
-export const DOMAIN_RATING_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly idle probe
-export const DOMAIN_RATING_STARTUP_DELAY_MS = 30_000;
+const DOMAIN_RATING_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly idle probe
+const DOMAIN_RATING_STARTUP_DELAY_MS = 30_000;
 
 const META_LAST_REFRESH = 'ahrefs_last_refresh_at';
 
@@ -28,17 +28,19 @@ export function createDomainRatingScheduler(deps: DomainRatingSchedulerDeps): {
     const db = new HistoryDB();
     try {
       const origins = db.trackedOrigins();
-      const eligible = [...new Set(
-        origins
-          .map((o) => hostnameFromUrl(o))
-          .filter((d): d is string => !!d && shouldFetchDomainRating(`https://${d}/`)),
-      )];
+      const eligible = [
+        ...new Set(
+          origins
+            .map((o) => hostnameFromUrl(o))
+            .filter((d): d is string => !!d && shouldFetchDomainRating(`https://${d}/`))
+        ),
+      ];
       if (eligible.length === 0) return false;
 
       refreshInProgress = true;
       const { ratings, resolved } = await fetchDomainRatings(
         eligible.map((d) => `https://${d}/`),
-        { concurrency: 3, force: true, db },
+        { concurrency: 3, force: true, db }
       );
       const refreshedAt = Date.now();
       // Only stamp when at least one lookup landed (rating or no-rating sentinel);

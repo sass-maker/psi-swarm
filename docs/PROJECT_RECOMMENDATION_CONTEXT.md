@@ -1,3 +1,8 @@
+---
+title: Project recommendation context
+description: Auto-generated Starboard audit context — product identity, feature map, stack inventory. Reference only; not hand-maintained.
+---
+
 # Project Recommendation Context
 
 Generated: 2026-06-06T21:14:19.580Z

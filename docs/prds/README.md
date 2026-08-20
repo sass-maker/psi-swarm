@@ -1,3 +1,8 @@
+---
+title: PRDs
+description: Shipped product requirement docs — all items below shipped in v0.4.0.
+---
+
 # psi-swarm PRDs
 
 Product requirement docs for planned features. All items below shipped in **v0.4.0**.

@@ -55,7 +55,7 @@ export interface RouteDiscovery {
 function tryNextJs(pageUrl: string, scripts: ScriptArtifact[]): DiscoveredLink[] | null {
   // Look for the Next.js buildManifest among the captured scripts.
   const buildManifest = scripts.find(
-    (s) => s.url.includes('/_next/static/') && s.url.endsWith('_buildManifest.js'),
+    (s) => s.url.includes('/_next/static/') && s.url.endsWith('_buildManifest.js')
   );
   if (!buildManifest) return null;
   const routes: DiscoveredLink[] = [];
@@ -120,7 +120,7 @@ function tryGenericStringHarvest(pageUrl: string, scripts: ScriptArtifact[]): Di
 export async function detectFrameworkRoutes(
   pageUrl: string,
   scripts: ScriptArtifact[] | undefined,
-  pageHtml?: string,
+  pageHtml?: string
 ): Promise<RouteDiscovery> {
   if (!scripts || scripts.length === 0) {
     return { framework: 'unknown', routes: [] };

@@ -21,8 +21,23 @@ interface UrlInfo {
   last: number;
 }
 
-const METRIC_LABELS: Record<string, { label: string; unit: 'ms' | 'index' | 'score'; higherIsBetter?: boolean; good?: number; poor?: number }> = {
-  performance_score: { label: 'Perf Score', unit: 'score', higherIsBetter: true, good: 90, poor: 50 },
+const METRIC_LABELS: Record<
+  string,
+  {
+    label: string;
+    unit: 'ms' | 'index' | 'score';
+    higherIsBetter?: boolean;
+    good?: number;
+    poor?: number;
+  }
+> = {
+  performance_score: {
+    label: 'Perf Score',
+    unit: 'score',
+    higherIsBetter: true,
+    good: 90,
+    poor: 50,
+  },
   lcp: { label: 'LCP', unit: 'ms', good: 2500, poor: 4000 },
   inp: { label: 'INP', unit: 'ms', good: 200, poor: 500 },
   cls: { label: 'CLS', unit: 'index', good: 0.1, poor: 0.25 },
@@ -41,8 +56,14 @@ function fmt(v: number | undefined, unit: 'ms' | 'index' | 'score'): string {
   return v.toFixed(0);
 }
 
-function fmtDelta(base: number, cand: number, higherIsBetter: boolean, unit: 'ms' | 'index' | 'score'): { text: string; cls: string } {
-  if (!Number.isFinite(base) || !Number.isFinite(cand)) return { text: '—', cls: 'text-[var(--color-dim)]' };
+function fmtDelta(
+  base: number,
+  cand: number,
+  higherIsBetter: boolean,
+  unit: 'ms' | 'index' | 'score'
+): { text: string; cls: string } {
+  if (!Number.isFinite(base) || !Number.isFinite(cand))
+    return { text: '—', cls: 'text-[var(--color-dim)]' };
   const d = cand - base;
   const pctDelta = base === 0 ? 0 : (d / base) * 100;
   const regressed = higherIsBetter ? d < 0 : d > 0;
@@ -53,11 +74,15 @@ function fmtDelta(base: number, cand: number, higherIsBetter: boolean, unit: 'ms
     : improved
       ? 'text-[var(--color-good)]'
       : 'text-[var(--color-dim)]';
-  const deltaStr = unit === 'index' ? `${sign}${d.toFixed(3)}` : `${sign}${d.toFixed(d % 1 === 0 ? 0 : 2)}`;
+  const deltaStr =
+    unit === 'index' ? `${sign}${d.toFixed(3)}` : `${sign}${d.toFixed(d % 1 === 0 ? 0 : 2)}`;
   return { text: `${deltaStr}  (${sign}${pctDelta.toFixed(1)}%)`, cls };
 }
 
-function colorClass(v: number | undefined, spec: { good?: number; poor?: number; higherIsBetter?: boolean }): string {
+function colorClass(
+  v: number | undefined,
+  spec: { good?: number; poor?: number; higherIsBetter?: boolean }
+): string {
   if (v === undefined || !Number.isFinite(v)) return 'text-[var(--color-dim)]';
   if (spec.higherIsBetter) {
     if (v >= (spec.good ?? 0)) return 'text-[var(--color-good)]';
@@ -174,9 +199,7 @@ export default function CompareView() {
     return (
       <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg p-8 space-y-4">
         <h2 className="text-xl font-semibold">No local agent running</h2>
-        <p className="text-[var(--color-dim)] text-sm">
-          Start the agent in a terminal:
-        </p>
+        <p className="text-[var(--color-dim)] text-sm">Start the agent in a terminal:</p>
         <pre className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded p-3 text-sm overflow-x-auto">
           <code className="text-[var(--color-cyan)]">pnpm run serve</code>
         </pre>
@@ -285,7 +308,9 @@ export default function CompareView() {
 
         <button
           onClick={() => void runCompare()}
-          disabled={!selectedUrl || !baselineTag || !candidateTag || baselineTag === candidateTag || loading}
+          disabled={
+            !selectedUrl || !baselineTag || !candidateTag || baselineTag === candidateTag || loading
+          }
           className="w-full px-4 py-3 bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading ? 'Comparing…' : 'Compare swarms'}
@@ -293,7 +318,9 @@ export default function CompareView() {
 
         {tags.length === 0 && selectedUrl && (
           <p className="text-xs text-[var(--color-dim)]">
-            No tagged runs found for this URL. Tag your swarms with <code className="text-[var(--color-cyan)]">--tag before-deploy</code> in the CLI or the tag field in the run dashboard to enable comparisons.
+            No tagged runs found for this URL. Tag your swarms with{' '}
+            <code className="text-[var(--color-cyan)]">--tag before-deploy</code> in the CLI or the
+            tag field in the run dashboard to enable comparisons.
           </p>
         )}
       </div>
@@ -309,7 +336,13 @@ export default function CompareView() {
   );
 }
 
-function CompareResult({ result, pct }: { result: CompareResponse; pct: 'p50' | 'p75' | 'p90' | 'p99' }) {
+function CompareResult({
+  result,
+  pct,
+}: {
+  result: CompareResponse;
+  pct: 'p50' | 'p75' | 'p90' | 'p99';
+}) {
   const pctKey = pct as keyof Stats;
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg overflow-hidden">
@@ -317,7 +350,8 @@ function CompareResult({ result, pct }: { result: CompareResponse; pct: 'p50' | 
         <div className="flex items-baseline justify-between">
           <span className="font-semibold">Comparison</span>
           <span className="text-[var(--color-dim)] text-xs font-mono">
-            {result.baselineTag} (n={result.baselineCount}) vs {result.candidateTag} (n={result.candidateCount}) · {pct}
+            {result.baselineTag} (n={result.baselineCount}) vs {result.candidateTag} (n=
+            {result.candidateCount}) · {pct}
           </span>
         </div>
         <div className="text-xs text-[var(--color-dim)] mt-1 font-mono truncate">{result.url}</div>
@@ -339,7 +373,12 @@ function CompareResult({ result, pct }: { result: CompareResponse; pct: 'p50' | 
             if (!spec) return null;
             const baseVal = m.baseline?.[pctKey];
             const candVal = m.candidate?.[pctKey];
-            const delta = fmtDelta(baseVal ?? NaN, candVal ?? NaN, !!spec.higherIsBetter, spec.unit);
+            const delta = fmtDelta(
+              baseVal ?? NaN,
+              candVal ?? NaN,
+              !!spec.higherIsBetter,
+              spec.unit
+            );
             return (
               <tr key={m.key} className="border-t border-[var(--color-border)]">
                 <td className="py-1.5 px-4 font-medium">{spec.label}</td>
@@ -353,10 +392,14 @@ function CompareResult({ result, pct }: { result: CompareResponse; pct: 'p50' | 
                   {delta.text}
                 </td>
                 <td className="text-right py-1.5 px-3 font-mono text-xs text-[var(--color-dim)]">
-                  {m.baseline ? `${fmt(m.baseline.min, spec.unit)}–${fmt(m.baseline.max, spec.unit)}` : '—'}
+                  {m.baseline
+                    ? `${fmt(m.baseline.min, spec.unit)}–${fmt(m.baseline.max, spec.unit)}`
+                    : '—'}
                 </td>
                 <td className="text-right py-1.5 px-3 font-mono text-xs text-[var(--color-dim)]">
-                  {m.candidate ? `${fmt(m.candidate.min, spec.unit)}–${fmt(m.candidate.max, spec.unit)}` : '—'}
+                  {m.candidate
+                    ? `${fmt(m.candidate.min, spec.unit)}–${fmt(m.candidate.max, spec.unit)}`
+                    : '—'}
                 </td>
               </tr>
             );

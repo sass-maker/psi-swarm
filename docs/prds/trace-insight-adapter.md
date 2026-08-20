@@ -1,6 +1,11 @@
+---
+title: Trace Insight Adapter
+description: Optional post-swarm diagnosis from Lighthouse artifacts, with an external adapter hook.
+---
+
 # Trace Insight Adapter
 
-**Status:** Shipped (builtin) · **Release:** v0.4.0 · **Updated:** 2026-06-13
+**Status:** Shipped and validated · **Release:** v0.4.0 · **Updated:** 2026-07-31
 
 ## What it is
 
@@ -29,6 +34,10 @@ An optional post-swarm diagnosis layer that turns captured Lighthouse artifacts 
 - `cli/src/trace-insight.ts` — adapter interface + builtin implementation
 - `cli/src/report.ts`, `cli/src/html-report.ts` — rendering
 
-## Follow-up
+## Validation
 
-Validate an external adapter (Chrome DevTools MCP) against a small set of known regressions.
+The external module-discovery, diagnosis, artifact-path, and persistence
+boundary is covered by a deterministic CLI test correlated to Chrome DevTools
+MCP traces for a control, a delayed document response, and delayed LCP
+rendering. See
+[external trace-insight validation](../development/trace-insight-validation.md).

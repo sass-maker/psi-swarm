@@ -1,0 +1,40 @@
+---
+import { PUBLIC_ROUTE_META, type PublicRouteKey } from '../data/publicRoutes';
+
+interface Props {
+  route: PublicRouteKey;
+}
+
+const { route } = Astro.props;
+const meta = PUBLIC_ROUTE_META[route];
+const origin = 'https://performance.sassmaker.com';
+const canonical = new URL(meta.path, origin).toString();
+const socialImage = `${origin}/apple-touch-icon.png`;
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: meta.title,
+  description: meta.description,
+  url: canonical,
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'psi-swarm',
+    url: origin,
+  },
+};
+---
+
+<title>{meta.title}</title>
+<meta name="description" content={meta.description} />
+<link rel="canonical" href={canonical} />
+<meta property="og:title" content={meta.title} />
+<meta property="og:description" content={meta.description} />
+<meta property="og:type" content="website" />
+<meta property="og:url" content={canonical} />
+<meta property="og:site_name" content="psi-swarm" />
+<meta property="og:image" content={socialImage} />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content={meta.title} />
+<meta name="twitter:description" content={meta.description} />
+<meta name="twitter:image" content={socialImage} />
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

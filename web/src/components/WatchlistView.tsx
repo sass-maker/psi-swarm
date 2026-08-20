@@ -191,8 +191,9 @@ export default function WatchlistView() {
       {data && (
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] overflow-hidden">
           <div className="px-5 py-3 border-b border-[var(--color-border)] text-sm text-[var(--color-dim)]">
-            {data.summary.regressed} regressed · {data.summary.improved} improved · {data.summary.stale} stale ·{' '}
-            {data.summary.missing} missing · {data.summary.stable} stable
+            {data.summary.regressed} regressed · {data.summary.improved} improved ·{' '}
+            {data.summary.stale} stale · {data.summary.missing} missing · {data.summary.stable}{' '}
+            stable
           </div>
           {data.queue.length === 0 ? (
             <p className="p-5 text-sm text-[var(--color-dim)]">No watched URLs yet.</p>
@@ -214,7 +215,9 @@ export default function WatchlistView() {
                       <span className="text-xs text-[var(--color-dim)]">{item.preset}</span>
                     </div>
                     <div className="font-medium mt-1">{item.label ?? item.url}</div>
-                    {item.label && <div className="text-xs text-[var(--color-dim)] break-all">{item.url}</div>}
+                    {item.label && (
+                      <div className="text-xs text-[var(--color-dim)] break-all">{item.url}</div>
+                    )}
                     <div className="text-sm text-[var(--color-dim)] mt-1">{item.message}</div>
                   </div>
                   <button

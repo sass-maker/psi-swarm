@@ -40,6 +40,8 @@ psi-swarm urls                # list all URLs seen
 psi-swarm compare <url> --baseline <tag> --candidate <tag> [--pct p75]
 psi-swarm watch list|add|remove|check   # local regression watchlist
 psi-swarm discover <url>      # list same-origin links from a page (static only)
+psi-swarm ahrefs crawlers [--refresh] [--check <ip>]  # Ahrefs' published AhrefsBot IPs/ranges
+psi-swarm ahrefs top-domains [--from <n>] [--to <n>]   # top-1M-by-DR leaderboard (needs AHREFS_API_KEY)
 ```
 
 Default is the **`psi`** preset group (mobile + desktop, matching Google PSI) × 5 runs = 10 runs total (~2-3 min) serial. For deeper data, use `--parallel auto --runs 30`.
@@ -53,9 +55,16 @@ By default runs are **serial** — Lighthouse's CPU throttling assumes a dedicat
 After a swarm, psi-swarm can enrich the report with two free-ish public signals:
 
 - **CrUX** — real-user p75 from Chrome (`CRUX_API_KEY` required). Works for any URL in Google's field dataset.
-- **Ahrefs Domain Rating** — backlink authority on a 0–100 log scale. Uses Ahrefs' [free public endpoint](https://docs.ahrefs.com/en/api/reference/public/get-domain-rating-free) (no API key). Fetched automatically for **custom domains only** — `*.pages.dev` and `*.workers.dev` are skipped because DR on Cloudflare platform subdomains is not meaningful. Ratings are stored in `~/.psi-swarm/history.db`. When `serve` is running, they refresh **once a week while idle** (no active swarms); the agent probes hourly and skips refresh if a swarm is in flight.
+- **Ahrefs Domain Rating** — backlink authority on a 0–100 log scale. Uses Ahrefs' [free public endpoint](https://docs.ahrefs.com/en/api/reference/public/get-domain-rating-free) (free, no paid plan — but requires an `AHREFS_API_KEY` **from 2026-08-10**; set it in your environment or Infisical (`dev` env) ahead of that date, or requests will start returning 401). Fetched automatically for **custom domains only** — `*.pages.dev` and `*.workers.dev` are skipped because DR on Cloudflare platform subdomains is not meaningful. Ratings are stored in `~/.psi-swarm/history.db`. When `serve` is running, they refresh **once a week while idle** (no active swarms); the agent probes hourly and skips refresh if a swarm is in flight.
 
 Both appear in terminal reports, HTML exports, and the `/projects` dashboard (via `serve`).
+
+### Ahrefs public-API extras (`ahrefs crawlers`, `ahrefs top-domains`)
+
+- **`psi-swarm ahrefs crawlers [--refresh] [--check <ip>]`** — Ahrefs publishes the IPs/CIDR ranges its `AhrefsBot` crawler uses ([crawler-ips](https://docs.ahrefs.com/en/api/reference/public/get-crawler-ips), [crawler-ip-ranges](https://docs.ahrefs.com/en/api/reference/public/get-crawler-ip-ranges) — fully free, no key). Fetches and caches the list (24h TTL), and `--check <ip>` confirms whether a given IP is genuinely AhrefsBot before you allowlist it in a firewall/WAF rule or trust it in access logs.
+- **`psi-swarm ahrefs top-domains [--from <n>] [--to <n>]`** — the top-1M-domains-by-Domain-Rating leaderboard ([domain-rating-top-domains](https://docs.ahrefs.com/en/api/reference/public/get-domain-rating-top-domains), up to 250k rows/request). Free and unit-free, but requires `AHREFS_API_KEY` — the same free-account key as the Domain Rating lookup above, not a paid plan.
+
+**Getting `AHREFS_API_KEY`:** sign up for a free Ahrefs account, generate a key at [Account settings → API keys](https://app.ahrefs.com/account/api-keys), and set it as an env var (or store it in Infisical under `AHREFS_API_KEY`, `dev` env, and export it before running `psi-swarm`). This free key does **not** unlock paid endpoints (Site Explorer, Rank Tracker, Management/Projects, Subscription info) — those return 401 without a paid Ahrefs API plan.
 
 ### Link discovery (the "what else should I test?" feature)
 

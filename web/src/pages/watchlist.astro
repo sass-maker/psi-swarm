@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import WatchlistView from '../components/WatchlistView.tsx';
+import PublicRouteHead from '../components/PublicRouteHead.astro';
 ---
 
 <!doctype html>
@@ -8,7 +9,10 @@ import WatchlistView from '../components/WatchlistView.tsx';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>psi-swarm · watchlist</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <PublicRouteHead route="watchlist" />
   </head>
   <body class="min-h-screen">
     <main class="max-w-5xl mx-auto px-6 py-10">
@@ -24,6 +28,7 @@ import WatchlistView from '../components/WatchlistView.tsx';
           <a href="./projects/" class="hover:text-[var(--color-text)]">projects</a>
           <a href="./compare/" class="hover:text-[var(--color-text)]">compare</a>
           <a href="./gallery/" class="hover:text-[var(--color-text)]">demo gallery</a>
+          <a href="/changelog" class="hover:text-[var(--color-text)]">changelog</a>
         </nav>
       </header>
       <WatchlistView client:load />

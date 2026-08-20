@@ -4,6 +4,7 @@ import { diagnosePreset, rankOpportunities, formatAggregatedAudit } from './diag
 import type { CruxRecord } from './crux.js';
 import type { DomainRatingResult } from './ahrefs.js';
 import type { TraceInsightRecord } from './trace-insight.js';
+import { METRICS } from './metrics.js';
 
 /**
  * Self-contained HTML report. One file, no external assets, opens anywhere.
@@ -21,48 +22,6 @@ export interface HtmlReportOptions {
   reasoning?: { text: string; backend?: string; model?: string; durationMs?: number };
   generatedAt?: Date;
   traceInsights?: TraceInsightRecord[];
-}
-
-type MetricKey = 'lcp' | 'inp' | 'cls' | 'tbt' | 'fcp' | 'ttfb' | 'si' | 'performance_score';
-interface MetricSpec {
-  key: MetricKey;
-  label: string;
-  unit: 'ms' | 'score' | 'index';
-  good?: number;
-  poor?: number;
-  higherIsBetter?: boolean;
-}
-
-const METRICS: MetricSpec[] = [
-  { key: 'performance_score', label: 'Perf Score', unit: 'score', good: 90, poor: 50, higherIsBetter: true },
-  { key: 'lcp', label: 'LCP', unit: 'ms', good: 2500, poor: 4000 },
-  { key: 'inp', label: 'INP', unit: 'ms', good: 200, poor: 500 },
-  { key: 'cls', label: 'CLS', unit: 'index', good: 0.1, poor: 0.25 },
-  { key: 'tbt', label: 'TBT', unit: 'ms', good: 200, poor: 600 },
-  { key: 'fcp', label: 'FCP', unit: 'ms', good: 1800, poor: 3000 },
-  { key: 'ttfb', label: 'TTFB', unit: 'ms', good: 800, poor: 1800 },
-  { key: 'si', label: 'SI', unit: 'ms', good: 3400, poor: 5800 },
-];
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-}
-function fmt(v: number | undefined, unit: 'ms' | 'index' | 'score'): string {
-  if (v === undefined || !Number.isFinite(v)) return '—';
-  if (unit === 'ms') return v >= 1000 ? `${(v / 1000).toFixed(2)}s` : `${Math.round(v)}ms`;
-  if (unit === 'index') return v.toFixed(3);
-  return v.toFixed(0);
-}
-function tierClass(v: number | undefined, spec: { good?: number; poor?: number; higherIsBetter?: boolean }): string {
-  if (v === undefined || !Number.isFinite(v)) return 'dim';
-  if (spec.higherIsBetter) {
-    if (v >= (spec.good ?? 0)) return 'good';
-    if (v >= ((spec.poor ?? 0) + (spec.good ?? 0)) / 2) return 'warn';
-    return 'poor';
-  }
-  if (v <= (spec.good ?? 0)) return 'good';
-  if (v <= (spec.poor ?? Infinity)) return 'warn';
-  return 'poor';
 }
 
 const CSS = `
@@ -115,7 +74,16 @@ const CSS = `
 `;
 
 export function renderHtmlReport(opts: HtmlReportOptions): string {
-  const { url, results, elapsedMs, cruxByFormFactor, domainRating, trafficProfile, reasoning, traceInsights } = opts;
+  const {
+    url,
+    results,
+    elapsedMs,
+    cruxByFormFactor,
+    domainRating,
+    trafficProfile,
+    reasoning,
+    traceInsights,
+  } = opts;
   const okResults = results.filter((r) => !r.error);
   const errors = results.length - okResults.length;
   const byPreset = new Map<string, RunResultWithArtifact[]>();
@@ -146,7 +114,9 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
   for (const [name, rs] of byPreset) {
     const label = rs[0].preset.label;
     const statsRows = METRICS.map((m) => {
-      const vals = rs.map((r) => r.metrics?.[m.key]).filter((v): v is number => typeof v === 'number');
+      const vals = rs
+        .map((r) => r.metrics?.[m.key])
+        .filter((v): v is number => typeof v === 'number');
       const s = computeStats(vals);
       if (!s) return '';
       const cls = (v: number) => tierClass(v, m);
@@ -203,7 +173,9 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
         for (const { preset, weight } of usedWeights) {
           const rs = byPreset.get(preset);
           if (!rs) continue;
-          const vals = rs.map((r) => r.metrics?.[m.key]).filter((v): v is number => typeof v === 'number');
+          const vals = rs
+            .map((r) => r.metrics?.[m.key])
+            .filter((v): v is number => typeof v === 'number');
           const s = computeStats(vals);
           if (!s) continue;
           weightedSum += s.p75 * weight;
@@ -212,9 +184,13 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
         if (weightAccum === 0) continue;
         const wp75 = weightedSum / weightAccum;
         const cls = tierClass(wp75, m);
-        parts.push(`<span class="dim">${m.label}</span> <span class="${cls} mono">${fmt(wp75, m.unit)}</span>`);
+        parts.push(
+          `<span class="dim">${m.label}</span> <span class="${cls} mono">${fmt(wp75, m.unit)}</span>`
+        );
       }
-      const breakdown = usedWeights.map(({ preset, weight }) => `${Math.round((weight / totalWeight) * 100)}% ${preset}`).join(' + ');
+      const breakdown = usedWeights
+        .map(({ preset, weight }) => `${Math.round((weight / totalWeight) * 100)}% ${preset}`)
+        .join(' + ');
       weightedHtml = `<section>
         <h2 style="color:var(--cyan)">Weighted verdict (${escapeHtml(trafficProfile.name)})</h2>
         <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:14px;">${parts.join('')}</div>
@@ -240,8 +216,12 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
   let cruxHtml = '';
   if (cruxByFormFactor && (cruxByFormFactor.mobile || cruxByFormFactor.desktop)) {
     const cruxRow = (label: string, rec?: CruxRecord | null) => {
-      if (!rec) return `<tr><td class="dim">${label}</td><td colspan="5" class="dim">no data</td></tr>`;
-      const cell = (v: number | undefined, spec: { good: number; poor: number; unit: 'ms' | 'index' }) => {
+      if (!rec)
+        return `<tr><td class="dim">${label}</td><td colspan="5" class="dim">no data</td></tr>`;
+      const cell = (
+        v: number | undefined,
+        spec: { good: number; poor: number; unit: 'ms' | 'index' }
+      ) => {
         const klass = tierClass(v, spec);
         return `<td class="${klass} mono">${fmt(v, spec.unit)}</td>`;
       };
@@ -254,7 +234,8 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
         ${cell(rec.metrics.ttfb?.p75, { good: 800, poor: 1800, unit: 'ms' })}
       </tr>`;
     };
-    const period = cruxByFormFactor.mobile?.collectionPeriod ?? cruxByFormFactor.desktop?.collectionPeriod;
+    const period =
+      cruxByFormFactor.mobile?.collectionPeriod ?? cruxByFormFactor.desktop?.collectionPeriod;
     cruxHtml = `<section>
       <h2>Real users (CrUX p75)</h2>
       <div class="sub">28-day field data from Chrome${period ? ` · ${escapeHtml(period)}` : ''}</div>
@@ -269,7 +250,10 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
 
     // Lab-vs-field gap
     const gapLines: string[] = [];
-    for (const [factor, rec] of [['mobile', cruxByFormFactor.mobile], ['desktop', cruxByFormFactor.desktop]] as const) {
+    for (const [factor, rec] of [
+      ['mobile', cruxByFormFactor.mobile],
+      ['desktop', cruxByFormFactor.desktop],
+    ] as const) {
       if (!rec || !rec.metrics.lcp) continue;
       const labLcps: number[] = [];
       for (const [, runs] of byPreset) {
@@ -282,10 +266,14 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
       const fieldLcp = rec.metrics.lcp.p75;
       const ratio = labStats.p75 / fieldLcp;
       let verdictHtml: string;
-      if (ratio >= 1.5) verdictHtml = `<span class="warn">lab is ${ratio.toFixed(1)}× more pessimistic</span>`;
-      else if (ratio <= 0.67) verdictHtml = `<span class="poor">lab is ${(1 / ratio).toFixed(1)}× more optimistic than reality</span>`;
+      if (ratio >= 1.5)
+        verdictHtml = `<span class="warn">lab is ${ratio.toFixed(1)}× more pessimistic</span>`;
+      else if (ratio <= 0.67)
+        verdictHtml = `<span class="poor">lab is ${(1 / ratio).toFixed(1)}× more optimistic than reality</span>`;
       else verdictHtml = `<span class="good">lab matches reality (within ±50%)</span>`;
-      gapLines.push(`<div class="gap-line"><span class="dim">${factor}</span>  lab <strong class="mono">${fmt(labStats.p75, 'ms')}</strong> <span class="dim">vs field</span> <strong class="mono">${fmt(fieldLcp, 'ms')}</strong>  →  ${verdictHtml}</div>`);
+      gapLines.push(
+        `<div class="gap-line"><span class="dim">${factor}</span>  lab <strong class="mono">${fmt(labStats.p75, 'ms')}</strong> <span class="dim">vs field</span> <strong class="mono">${fmt(fieldLcp, 'ms')}</strong>  →  ${verdictHtml}</div>`
+      );
     }
     if (gapLines.length > 0) {
       cruxHtml += `<section><h2>Lab vs field gap</h2>${gapLines.join('')}</section>`;
@@ -300,15 +288,17 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
     const diag = diagnosePreset(url, name, rs, rs[0].preset.label, rs[0].preset.formFactor);
     const ops = rankOpportunities(diag, 6);
     if (ops.length === 0 && !diag.lcpElement) continue;
-    const opsRows = ops.map((o) => {
-      const f = formatAggregatedAudit(o);
-      const top = f.topItems[0];
-      return `<tr>
+    const opsRows = ops
+      .map((o) => {
+        const f = formatAggregatedAudit(o);
+        const top = f.topItems[0];
+        return `<tr>
         <td>${escapeHtml(f.label)}</td>
         <td class="warn mono">${escapeHtml(f.savings || f.display || '—')}</td>
         <td class="dim mono" style="word-break:break-all;">${top ? `${escapeHtml(top.label)}${top.detail ? ` <span class="dim">(${escapeHtml(top.detail)})</span>` : ''}` : '—'}</td>
       </tr>`;
-    }).join('');
+      })
+      .join('');
     let elementHtml = '';
     if (diag.lcpElement) {
       const head = diag.lcpElement.nodeLabel ?? diag.lcpElement.selector ?? '(unknown)';
@@ -320,22 +310,31 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
     }
     let phasesHtml = '';
     if (diag.lcpPhases && diag.lcpPhases.length > 0) {
-      const items = diag.lcpPhases.map((p) => {
-        const pct = parseInt(p.percent, 10);
-        const klass = pct >= 40 ? 'poor' : pct >= 25 ? 'warn' : 'dim';
-        const ms = p.medianMs >= 1000 ? `${(p.medianMs / 1000).toFixed(1)}s` : `${Math.round(p.medianMs)}ms`;
-        return `<span class="${klass} mono">${escapeHtml(p.phase)} ${escapeHtml(p.percent)} (${ms})</span>`;
-      }).join('');
+      const items = diag.lcpPhases
+        .map((p) => {
+          const pct = parseInt(p.percent, 10);
+          const klass = pct >= 40 ? 'poor' : pct >= 25 ? 'warn' : 'dim';
+          const ms =
+            p.medianMs >= 1000
+              ? `${(p.medianMs / 1000).toFixed(1)}s`
+              : `${Math.round(p.medianMs)}ms`;
+          return `<span class="${klass} mono">${escapeHtml(p.phase)} ${escapeHtml(p.percent)} (${ms})</span>`;
+        })
+        .join('');
       phasesHtml = `<div class="phases"><span class="dim">LCP phases:</span>${items}</div>`;
     }
     opportunitiesHtml += `<section>
       <h2>Why ${escapeHtml(name)}?</h2>
       ${elementHtml}
       ${phasesHtml}
-      ${opsRows ? `<table>
+      ${
+        opsRows
+          ? `<table>
         <thead><tr><th>Opportunity</th><th>Impact</th><th>Top item</th></tr></thead>
         <tbody>${opsRows}</tbody>
-      </table>` : ''}
+      </table>`
+          : ''
+      }
     </section>`;
   }
 
@@ -366,7 +365,13 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
   // Reasoning section
   let reasoningHtml = '';
   if (reasoning && reasoning.text) {
-    const meta = [reasoning.backend, reasoning.model, reasoning.durationMs ? `${(reasoning.durationMs / 1000).toFixed(1)}s` : ''].filter(Boolean).join(' · ');
+    const meta = [
+      reasoning.backend,
+      reasoning.model,
+      reasoning.durationMs ? `${(reasoning.durationMs / 1000).toFixed(1)}s` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
     reasoningHtml = `<section>
       <h2 style="color:var(--cyan)">Reasoning ${meta ? `<span class="dim" style="font-weight:400;font-size:12px;">· ${escapeHtml(meta)}</span>` : ''}</h2>
       <div class="reasoning">${escapeHtml(reasoning.text)}</div>
@@ -397,4 +402,31 @@ export function renderHtmlReport(opts: HtmlReportOptions): string {
 </main>
 </body>
 </html>`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!
+  );
+}
+function fmt(v: number | undefined, unit: 'ms' | 'index' | 'score'): string {
+  if (v === undefined || !Number.isFinite(v)) return '—';
+  if (unit === 'ms') return v >= 1000 ? `${(v / 1000).toFixed(2)}s` : `${Math.round(v)}ms`;
+  if (unit === 'index') return v.toFixed(3);
+  return v.toFixed(0);
+}
+function tierClass(
+  v: number | undefined,
+  spec: { good?: number; poor?: number; higherIsBetter?: boolean }
+): string {
+  if (v === undefined || !Number.isFinite(v)) return 'dim';
+  if (spec.higherIsBetter) {
+    if (v >= (spec.good ?? 0)) return 'good';
+    if (v >= ((spec.poor ?? 0) + (spec.good ?? 0)) / 2) return 'warn';
+    return 'poor';
+  }
+  if (v <= (spec.good ?? 0)) return 'good';
+  if (v <= (spec.poor ?? Infinity)) return 'warn';
+  return 'poor';
 }

@@ -1,12 +1,12 @@
 # psi-swarm-web
 
-Web UI for [psi-swarm](../psi-swarm). Drives the local agent (`psi-swarm serve`) from your browser — compute stays on your machine, the browser just renders.
+Web UI for [psi-swarm](..). Drives the local agent (`psi-swarm serve`) from your browser — compute stays on your machine, the browser just renders.
 
 ## Local dev
 
 ```bash
 # 1. In one terminal, start the agent from the psi-swarm CLI:
-cd ../psi-swarm
+cd ..
 node dist/cli.js serve --origin http://localhost:4321
 
 # 2. In another terminal, start this dev server:
@@ -27,7 +27,7 @@ Browser  ───CORS GET/POST───▶  http://127.0.0.1:7777  (psi-swarm a
 ```
 
 - Frontend: Astro + React + Tailwind 4 (this dir)
-- Local agent: Node HTTP server inside the existing psi-swarm CLI (`../psi-swarm/src/server.ts`)
+- Local agent: Node HTTP server inside the existing psi-swarm CLI (`../cli/src/server.ts`)
 - Compute: headless Chrome via Lighthouse on the user's own machine
 - No third-party services, no cloud, no telemetry — just localhost.
 

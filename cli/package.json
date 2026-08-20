@@ -16,10 +16,12 @@
     "build": "tsc",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
+    "test": "tsx --test test/**/*.test.ts",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage --test-coverage-include='src/**/*.ts' --test-coverage-lines=75 --test-coverage-branches=79 --test-coverage-functions=66 test/**/*.test.ts",
     "prepublishOnly": "pnpm run build"
   },
   "engines": {
-    "node": ">=20 <24"
+    "node": ">=22.19"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -29,7 +31,7 @@
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
     "ink": "^7.0.5",
-    "lighthouse": "^12.3.0",
+    "lighthouse": "^13.4.1",
     "ora": "^8.1.1",
     "react": "^19.2.7"
   },

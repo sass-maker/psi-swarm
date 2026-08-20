@@ -11,3 +11,11 @@ dist/
 .env
 .env.local
 .env.*
+
+# Blume docs build output (generated from docs/ — never edit, never commit).
+docs-dist/
+.blume/
+
+# Local agent scratch / logs (never commit).
+.wrangler/
+.psi-swarm/

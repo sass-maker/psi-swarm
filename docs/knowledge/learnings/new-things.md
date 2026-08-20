@@ -1,13 +1,22 @@
+---
+title: New things to learn
+description: Techniques that are genuinely novel in this project, with code-grounded gotchas.
+---
+
 # New things to learn — psi-swarm
 
 Techniques that are genuinely novel in this project, ordered from most unfamiliar to most mainstream.
 
+> Each entry leans on an authoritative external source (linked) for the
+> concept; the gotchas here are the project-specific ones grounded in this
+> codebase.
+
 ---
 
-## Lighthouse 12 programmatic API (vs PSI HTTP API)
+## Lighthouse 13 programmatic API (vs PSI HTTP API)
 - What: Call Lighthouse directly as a Node module (`import lighthouse from 'lighthouse'`) instead of hitting the PageSpeed Insights REST endpoint.
 - Why here: TBD
-- Gotcha (from code): Node 24 breaks Lighthouse 12 via an internal `TraceEngineResult` performance mark — `engines` field in both `package.json` and `cli/package.json` hard-gates to `>=20 <24`. The runner passes `{ port: chrome.port, logLevel: 'silent', output: 'json' }` with an inline config object rather than a file (`runner.ts:58-74`).
+- Gotcha (from code): Upgraded from Lighthouse 12 to 13 to eliminate the `extract-zip@2.0.1` transitive dependency (GHSA-jmr9-qjv8-65gv). Lighthouse 13 uses `puppeteer-core@25` → `@puppeteer/browsers@3` → `modern-tar` instead of `extract-zip`. Requires Node >=22.19 and supports Node 24. The runner passes `{ port: chrome.port, logLevel: 'silent', output: 'json' }` with an inline config object rather than a file (`runner.ts:58-74`).
 - Source: https://github.com/GoogleChrome/lighthouse/blob/main/docs/configuration.md
 
 ---
@@ -67,8 +76,8 @@ Techniques that are genuinely novel in this project, ordered from most unfamilia
 
 ---
 
-## npm workspaces monorepo (cli + web)
-- What: Root `package.json` declares `workspaces: ["cli", "web"]`; `npm --workspace cli run build` targets a single package without hoisting conflicts.
+## pnpm workspaces monorepo (cli + web)
+- What: Root `package.json` declares `workspaces: ["cli", "web"]` and `packageManager: pnpm@10.33.2`; `pnpm-workspace.yaml` lists the packages. `pnpm --filter psi-swarm run build` targets a single package without hoisting conflicts.
 - Why here: TBD
-- Gotcha (from code): The project uses **npm workspaces**, not pnpm — there is no `pnpm-workspace.yaml`. Root `package.json:7-10` lists the two workspaces.
-- Source: https://docs.npmjs.com/cli/v10/using-npm/workspaces
+- Gotcha (from code): The project migrated from npm workspaces to pnpm on 2026-06-20 (PR #8). `onlyBuiltDependencies` in `pnpm-workspace.yaml` allow-lists the native builds (`better-sqlite3`, `esbuild`, `sharp`). The `better-sqlite3` native binding must match the Node version — re-run `pnpm install` after switching Node. See [ADR: pnpm migration](../../architecture/decisions/pnpm-migration.md).
+- Source: https://pnpm.io/workspaces

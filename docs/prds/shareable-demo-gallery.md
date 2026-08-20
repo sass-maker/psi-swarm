@@ -1,3 +1,8 @@
+---
+title: Shareable Demo Gallery
+description: Static /gallery fixtures so new users see comparison output without running a swarm.
+---
+
 # Shareable Demo Gallery
 
 **Status:** Shipped · **Release:** v0.4.0 · **Updated:** 2026-06-13

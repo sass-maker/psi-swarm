@@ -1,0 +1,38 @@
+# psi-swarm — full agent brief
+
+Distributional Lighthouse / PageSpeed audits with grounded performance analysis across the fleet.
+
+## Index
+
+# psi-swarm
+
+Distributional Lighthouse performance audits for the fleet.
+
+## Agent entrypoints
+
+- https://performance.sassmaker.com/llms.txt
+- https://performance.sassmaker.com/api/ai
+- https://performance.sassmaker.com/index.md
+
+## Product links
+
+- Home: https://performance.sassmaker.com/ — Run repeated Lighthouse audits from the local-first controller
+- Projects: https://performance.sassmaker.com/projects/ — Per-project results
+- Compare: https://performance.sassmaker.com/compare/ — Compare two tagged swarms across percentile results
+- Watchlist: https://performance.sassmaker.com/watchlist/ — Review locally tracked performance regressions
+- Demo gallery: https://performance.sassmaker.com/gallery/ — Explore static before-and-after performance examples
+- Changelog: https://performance.sassmaker.com/changelog/ — Verified psi-swarm product and release history
+
+## Machine surfaces
+
+- https://performance.sassmaker.com/llms.txt
+- https://performance.sassmaker.com/llms-full.txt
+- https://performance.sassmaker.com/api/ai
+- https://performance.sassmaker.com/index.md
+- https://performance.sassmaker.com/sitemap.xml
+- https://performance.sassmaker.com/robots.txt
+
+## Contact
+
+- Owner: https://sarthakagrawal.dev
+- Agent email for directory verification: sarthakagrawal@agentmail.to

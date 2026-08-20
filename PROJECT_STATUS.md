@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-03 (v0.4.0)
+Last updated: 2026-08-13 (v0.4.0)
 
 ## Why / What
 
@@ -17,9 +17,11 @@ monitoring/alerting.
 ## Dependencies
 
 External:
-- **Lighthouse 12** (`lighthouse`) — the measurement engine. Known
-  incompatibility with Node 24 (TraceEngineResult performance mark), hence the
-  `node >=20 <24` engines pin; Node 22 LTS is the supported path.
+- **Lighthouse 13** (`lighthouse`) — the measurement engine. Requires
+  Node >=22.19 and supports Node 24. Upgraded from Lighthouse 12 to
+  eliminate the `extract-zip@2.0.1` transitive dependency
+  (GHSA-jmr9-qjv8-65gv) — Lighthouse 13 uses `puppeteer-core@25` →
+  `@puppeteer/browsers@3` → `modern-tar` instead of `extract-zip`.
 - **Headless Chrome** via `chrome-launcher` — runs the Lighthouse audits.
 - **better-sqlite3** — local run history, watchlist, insights, and DR cache
   (SQLite on disk).
@@ -33,7 +35,8 @@ External:
   `web` devDependency).
 - CLI UX: `commander`, `ink` + React 19, `chalk`, `boxen`, `cli-table3`, `ora`.
 - Web app: Astro 5 + React 19 + Tailwind v4 (`@tailwindcss/vite`), static build.
-- Tooling: pnpm workspaces (`pnpm@10.33.2`), TypeScript 5.7, tsx.
+- Tooling: pnpm workspaces (`pnpm@10.33.2`), TypeScript 5.7, tsx, and the
+  Fleet Ultracite/Biome lint contract.
 
 Internal (fleet):
 - **SaaS Maker auth hub** — CLI device-flow helper (`connect` / `whoami`)
@@ -44,6 +47,40 @@ Internal (fleet):
 
 ## Timeline
 
+- **2026-08-20 — Standalone ownership restored:** Synchronized PSI Swarm out of
+  Fleet Workspace into `sass-maker/psi-swarm`, restored its repository-owned
+  CLI, controller, docs, checks, and installable skill, and left production
+  deployment manual. Fleet retains only portfolio and orchestration references.
+- **2026-08-13** — Replaced the disconnected controller's broken npm command
+  with a verified four-step local-agent setup: supported prerequisites, the
+  compatible public v0.4.0 source, copyable commands, and a CORS origin derived
+  from the current controller page.
+- **2026-08-13** — Added a first-class Quick check to the local browser
+  controller: two serial desktop audits produce honestly labeled directional
+  medians, while Full swarm remains the five-run mobile-and-desktop confidence
+  path and Custom swarm preserves expert controls.
+- **2026-08-09** — Adopted the Fleet Ultracite/Biome lint contract with zero
+  findings across 59 applicable files. The migration also fixed report-link
+  generation in project page rows by passing the existing agent client through
+  the component boundary.
+- **2026-07-31** — Completed the public social-search metadata contract with a
+  real 1200×630 product preview plus Open Graph and Twitter image metadata on
+  every public route. The production homepage audit now has a source-side fix
+  for its only remaining critical on-page SEO failure; rollout remains manual.
+- **2026-07-31** — Validated the optional external trace-insight boundary
+  against controlled Chrome DevTools MCP traces for a clean control,
+  `DocumentLatency`, and LCP render-delay regression. Added a deterministic
+  CLI-owned test covering adapter discovery, diagnosis, artifact linkage, and
+  SQLite persistence without adding a runtime dependency.
+- **2026-07-31** — Made every public controller route independently
+  discoverable: the Fleet registry now writes agent surfaces into the deployed
+  Astro `web/public` directory, the six canonical routes share complete search
+  and structured metadata, and each route has substantive Markdown in the
+  sitemap and `/api/ai` catalog. Removed the obsolete duplicate `site/public`
+  tree and moved its public verification file into the deployed directory.
+- **2026-07-29** — Added the owned `/changelog` surface with verified editorial
+  milestones, plus internal links from every public web route. Roadmap and
+  Source resolve to the Fleet issues view and canonical monorepo directory.
 - **2026-07-03** — Finished the local web controller: `psi-swarm web` command starts the agent + opens the browser UI in one step. Compare API (`/api/compare`, `/api/tags`) for tagged swarm diffs. Agent connection refactored to quiet opt-in probing (`connectToAgent`). WatchlistView fixed to use the new connection API. Non-CLI users can now run, compare, and inspect swarms entirely in the browser.
 - **2026-06-03/04** — core build-out: `/projects` fleet dashboard backed by
   local SQLite history, Astro/React HTML reports (self-contained files),
@@ -53,7 +90,7 @@ Internal (fleet):
 - **2026-06-05** — logged fleet perf-push follow-ups; fleet-wide CF Cache
   Rules deployer; removed one-off Pages-cleanup workflow.
 - **2026-06-09** — evaluated OSS performance-tool integrations
-  (`docs/oss-integration-evaluation.md`).
+  (`docs/architecture/decisions/oss-integration-evaluation.md`).
 - **2026-06-10** — Ahrefs Domain Rating in reports, projects dashboard, and
   weekly idle refresh; hardened with negative caching, fetch timeouts, and
   UI states.
@@ -61,7 +98,7 @@ Internal (fleet):
   trace insight) plus correctness fixes (report-URL decoding, waiting for
   project runs, dashboard run-subscription cleanup).
 - **2026-06-19** — continue-on-error for batch page runs with per-page
-  failure reporting; committed `docs/learning/` notes.
+  failure reporting; committed `docs/knowledge/learnings/` notes.
 - **2026-06-20** — SaaS Maker auth hub (device-flow `connect`/`whoami`, PR #6);
   migrated npm workspaces to pnpm (PR #8).
 - **2026-06-22** — made psi-swarm standalone OSS, decoupled from saas-maker
@@ -71,8 +108,9 @@ Internal (fleet):
   (PRs #11–#14).
 - **2026-06-28** — repo transferred to `sarthak-fleet` org (unblocking CF org
   secrets); README npm→pnpm fixes + AGENTS.md (PR #17).
-- **2026-07-02** — guarded manual deploy command (`pnpm deploy` →
-  `scripts/manual-deploy.mjs`).
+- **2026-07-02** — guarded manual deploy command (`pnpm run deploy` →
+  `scripts/manual-component-deploy.mjs`). Use `pnpm run deploy`, not
+  `pnpm deploy`, which invokes pnpm's built-in workspace deploy command.
 
 ## Products
 
@@ -82,15 +120,22 @@ Internal (fleet):
 - **Local web controller (`web/`)** — Astro + React + Tailwind browser UI for
   the CLI `serve` agent, talking to it over CORS/SSE.
 - **Deployed web app** — static Astro build on the Cloudflare Pages project
-  `psi-swarm-web` (https://psi-swarm-web.pages.dev). Build:
+  `psi-swarm-web` (<https://performance.sassmaker.com>). The platform hostname
+  remains `psi-swarm-web.pages.dev`. Build:
   `pnpm --filter psi-swarm-web run build` → `web/dist`. Includes a static
   `/gallery` demo that works without the local agent.
+- **Public changelog** — `/changelog` records verified releases on the product
+  domain; planned work remains in Fleet Workspace GitHub Issues.
 - **CI/CD** — `.github/workflows/deploy.yml` builds the web workspace with
-  pnpm and deploys `web/dist` via `cloudflare/wrangler-action@v3` on push to
-  `main` (paths `web/**`) + manual dispatch. The action runs from
-  `workingDirectory: web` with the locally pinned wrangler (the action's own
-  install fails inside this pnpm monorepo). Repo-local guarded deploy:
-  `pnpm deploy`.
+  pnpm and deploys `web/dist` via `cloudflare/wrangler-action@v3`. Trigger is
+  **manual dispatch only** (not push) — `main` stays releasable but is not an
+  automatic production trigger. The action runs from `workingDirectory: web`
+  with the locally pinned wrangler (the action's own install fails inside this
+  pnpm monorepo). Repo-local guarded deploy: `pnpm run deploy`
+  (`pnpm deploy` invokes pnpm's built-in workspace deploy command).
+  `.github/workflows/psi-swarm-ci.yml` runs the CLI regression suite, CLI/web
+  builds, and docs checks for helper changes; `.github/workflows/docs.yml`
+  separately validates docs paths and builds the Blume site.
 - **Installable skill** — `pnpm install:skill` installs the Claude/Codex skill
   documenting usage paths.
 
@@ -109,7 +154,7 @@ Measurement engine:
 - Batch page runs continue on error with per-page failure reporting.
 - OSS integration decision: keep Lighthouse as the engine; prefer an optional
   Chrome DevTools trace-insight adapter before adopting a heavier
-  sitespeed/WebPageTest-style stack (`docs/oss-integration-evaluation.md`).
+  sitespeed/WebPageTest-style stack (`docs/architecture/decisions/oss-integration-evaluation.md`).
 
 History & analysis (SQLite):
 - Local run history with tagged runs and before/after comparisons.
@@ -117,7 +162,8 @@ History & analysis (SQLite):
   bundles to `~/.psi-swarm/artifacts/`, derive a builtin diagnosis into
   `run_insights`, render it in CLI/HTML reports, and expose `/api/insights`.
   External adapter hook: `~/.psi-swarm/adapters/trace-insight.mjs` or
-  `PSI_TRACE_INSIGHT_ADAPTER`.
+  `PSI_TRACE_INSIGHT_ADAPTER`; the hook is regression-tested against
+  Chrome DevTools MCP trace oracles.
 - **Local regression watchlist (PRD shipped):** `watchlist` table, `psi-swarm
   watch` subcommands, `/api/watchlist` endpoints, `/watchlist` web UI.
 - Ahrefs Domain Rating for custom-domain projects in `/projects`, CLI, and
@@ -127,12 +173,19 @@ History & analysis (SQLite):
 
 Web controller & sharing:
 - Astro + React + Tailwind local browser UI for the `serve` agent (CORS/SSE).
+- Disconnected controller state guides users through the verified public
+  local-agent install and generates the correct allowed origin for the current
+  page.
+- Quick, Full, and Custom run paths: Quick produces a directional two-run
+  desktop result, then offers direct confirmation with the full PSI swarm.
 - **Shareable demo gallery (PRD shipped):** static fixtures + `/gallery` route
   — works without the local agent.
 - Agent auto-probe only fires on localhost or explicit `?agent=`/`?token=`
   intent (no failed `127.0.0.1` requests on the deployed site).
 
 Fleet & tooling:
+- Fleet Ultracite/Biome lint contract covers the CLI, web app, tests, and
+  scripts with zero findings across 59 applicable files.
 - SaaS Maker auth hub: CLI device-flow `connect` / `whoami` for fleet Cockpit
   token storage.
 - Optional AI reasoning via local-ai or any OpenAI-compatible backend.
@@ -140,44 +193,8 @@ Fleet & tooling:
 - Installable skill + AGENTS guidance for Claude/Codex usage.
 - Standalone OSS: decoupled from saas-maker, MIT-licensed.
 
-## Todo / Planned / Deferred / Blocked
+## Work queue
 
-Planned next:
-1. Keep Node 22 LTS as the supported path until the Lighthouse 12 / Node 24
-   trace-mark issue is resolved.
-2. ~~Improve the local web controller so users can run, compare, and inspect
-   swarms without dropping to the CLI.~~ **Done** — `psi-swarm web` command + compare API + browser UI.
-3. Validate an external trace-insight adapter against a small set of known
-   regressions (Chrome DevTools MCP path).
-
-Fleet Perf Push 2026-06 — open follow-ups (from the 2026-06-04/05 fleet
-desktop-LCP push, goal <500 ms p75 across all 23 sites; the push closed 5
-sites under 500 ms via the Worker + Astro overlay pattern, self-hosted fonts,
-opacity-anim LCP fixes, CF Cache Rules, and `caches.default` data wrapping;
-the remaining gap is being closed at the app level — Argo (cost) and Vercel
-(external dep) are off the table):
-4. **Knowledgebase landing site** — build Astro frontend for the
-   FastAPI+Qdrant RAG at `fleet/knowledgebase/`. Not perf-critical; tracked
-   here because it completes the fleet inventory.
-5. **psi-swarm × saas-maker integration** — wire this CLI into the saas-maker
-   fleet workflow so desktop LCP samples flow into Cockpit dashboards. Spec
-   notes move up to "Planned next" once started.
-6. **Beasties critical-CSS pass** — high-signal Beasties-only pass on
-   saas-maker cockpit + sarthakagrawal.dev. Both have dynamic `/` so the Astro
-   overlay does not apply; only the Beasties half is safe. Expected
-   ~150–300 ms LCP win.
-
-Deferred / parked:
-- Hosted RUM or real-user p99 collection — psi-swarm is lab data, not a RUM
-  replacement.
-- Cloud execution — compute is intentionally local for now.
-- Paid monitoring, team accounts, and alerting — deferred behind a stronger
-  local workflow.
-- **Custom-domain Worker TTFB floor** (intentional, do not re-open without a
-  budget decision) — CF Workers/Pages on custom domains floor at 400–1000 ms
-  TTFB in Lighthouse cold-sim without Argo Smart Routing. User ruled out both
-  Argo ($5/mo) and Vercel (external dep). Workers.dev URLs hit <500 ms;
-  custom domains do not.
-
-Blocked:
-- (none — repo transferred to `sarthak-fleet` org; org secrets now available)
+Open work is tracked only in [GitHub Issues](https://github.com/sass-maker/psi-swarm/issues).
+An open issue is a to-do, a linked pull request is in progress, and merge plus
+issue closure makes the work done.

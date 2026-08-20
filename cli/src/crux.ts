@@ -1,8 +1,8 @@
 const CRUX_ENDPOINT = 'https://chromeuxreport.googleapis.com/v1/records:queryRecord';
 
-export type CruxFormFactor = 'PHONE' | 'DESKTOP' | 'TABLET';
+type CruxFormFactor = 'PHONE' | 'DESKTOP' | 'TABLET';
 
-export interface CruxMetricSnapshot {
+interface CruxMetricSnapshot {
   p75: number;
 }
 
@@ -68,7 +68,7 @@ function fmtDate(d?: { year: number; month: number; day: number }): string | und
 
 async function callCrux(
   body: Record<string, unknown>,
-  apiKey: string,
+  apiKey: string
 ): Promise<{ status: number; data?: CruxApiResponse; error?: string }> {
   const res = await fetch(`${CRUX_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
@@ -116,7 +116,7 @@ function buildRecord(api: CruxApiResponse, source: 'origin' | 'url'): CruxRecord
  */
 export async function fetchCrux(
   pageUrl: string,
-  opts: FetchCruxOptions = {},
+  opts: FetchCruxOptions = {}
 ): Promise<CruxRecord | null> {
   const apiKey = opts.apiKey ?? process.env.CRUX_API_KEY;
   if (!apiKey) return null;

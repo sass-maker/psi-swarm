@@ -1,6 +1,5 @@
 import {
   ACTIONABLE_AUDITS,
-  AUDIT_BY_ID,
   type CapturedAudit,
   type AuditItem,
   type ActionableAuditSpec,
@@ -55,7 +54,8 @@ function dedupeItems(items: AuditItem[]): AuditItem[] {
   const seen = new Set<string>();
   const out: AuditItem[] = [];
   for (const it of items) {
-    const key = it.url ?? it.source ?? it.node?.selector ?? it.snippet ?? JSON.stringify(it).slice(0, 80);
+    const key =
+      it.url ?? it.source ?? it.node?.selector ?? it.snippet ?? JSON.stringify(it).slice(0, 80);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(it);
@@ -68,7 +68,7 @@ export function diagnosePreset(
   presetName: string,
   results: RunResultWithArtifact[],
   presetLabel?: string,
-  formFactor?: 'mobile' | 'desktop',
+  formFactor?: 'mobile' | 'desktop'
 ): Diagnosis {
   const okResults = results.filter((r) => !r.error && r.audits && r.audits.length > 0);
   const consistencyNotes: string[] = [];
@@ -88,7 +88,9 @@ export function diagnosePreset(
   for (const spec of ACTIONABLE_AUDITS) {
     const observations = byId.get(spec.id);
     if (!observations || observations.length === 0) continue;
-    const failedIn = observations.filter((o) => typeof o.score === 'number' && o.score < FAILING_SCORE_THRESHOLD).length;
+    const failedIn = observations.filter(
+      (o) => typeof o.score === 'number' && o.score < FAILING_SCORE_THRESHOLD
+    ).length;
     const numericValues = observations
       .map((o) => o.numericValue)
       .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
@@ -149,7 +151,7 @@ export function diagnosePreset(
 
   if (okResults.length < results.length) {
     consistencyNotes.push(
-      `${results.length - okResults.length} of ${results.length} runs failed or had no audits captured.`,
+      `${results.length - okResults.length} of ${results.length} runs failed or had no audits captured.`
     );
   }
 
@@ -205,9 +207,10 @@ export function formatAggregatedAudit(a: AggregatedAudit): FormattedAudit {
   let display = a.displayValue ?? '';
   let savings = '';
   if (a.spec.kind === 'savings-ms' && a.medianNumericValue) {
-    savings = a.medianNumericValue >= 1000
-      ? `~${(a.medianNumericValue / 1000).toFixed(1)}s save`
-      : `~${Math.round(a.medianNumericValue)}ms save`;
+    savings =
+      a.medianNumericValue >= 1000
+        ? `~${(a.medianNumericValue / 1000).toFixed(1)}s save`
+        : `~${Math.round(a.medianNumericValue)}ms save`;
   } else if (a.spec.kind === 'savings-kb' && a.medianNumericValue) {
     const kb = a.medianNumericValue / 1024;
     savings = kb >= 1024 ? `~${(kb / 1024).toFixed(1)}MB save` : `~${Math.round(kb)}KB save`;
@@ -218,10 +221,18 @@ export function formatAggregatedAudit(a: AggregatedAudit): FormattedAudit {
     display = `${a.medianNumericValue.toFixed(0)} ${a.unit}`;
   }
   const topItems = a.topItems.slice(0, 3).map((it) => {
-    const label = it.url ?? it.source ?? it.node?.nodeLabel ?? it.node?.selector ?? it.node?.snippet ?? it.snippet ?? '(item)';
+    const label =
+      it.url ??
+      it.source ??
+      it.node?.nodeLabel ??
+      it.node?.selector ??
+      it.node?.snippet ??
+      it.snippet ??
+      '(item)';
     const truncated = label.length > 100 ? label.slice(0, 97) + '...' : label;
     let detail: string | undefined;
-    if (typeof it.wastedBytes === 'number') detail = `${Math.round(it.wastedBytes / 1024)}KB wasted`;
+    if (typeof it.wastedBytes === 'number')
+      detail = `${Math.round(it.wastedBytes / 1024)}KB wasted`;
     else if (typeof it.wastedMs === 'number') detail = `${Math.round(it.wastedMs)}ms`;
     else if (typeof it.totalBytes === 'number') detail = `${Math.round(it.totalBytes / 1024)}KB`;
     return { label: truncated, detail };

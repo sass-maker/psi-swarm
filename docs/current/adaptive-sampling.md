@@ -1,3 +1,8 @@
+---
+title: Adaptive sampling (proposed)
+description: Run until the target percentile's confidence interval converges, instead of a fixed N.
+---
+
 # Feature: Adaptive sampling — run until confident, not a fixed N
 
 **Status:** proposed · the headline "fast *and* rigorous" feature.

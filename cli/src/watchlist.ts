@@ -1,6 +1,6 @@
-import type { HistoryDB, RunRow, WatchlistEntry } from './db.js';
+import type { HistoryDB, RunRow } from './db.js';
 
-export type WatchStatus = 'regressed' | 'improved' | 'stable' | 'stale' | 'missing';
+type WatchStatus = 'regressed' | 'improved' | 'stable' | 'stale' | 'missing';
 
 export interface WatchlistQueueItem {
   url: string;
@@ -37,7 +37,9 @@ function percentile(values: number[], pct: number): number | undefined {
 
 function p75(rows: RunRow[]): { lcp?: number; score?: number } {
   const lcps = rows.map((r) => r.lcp).filter((v): v is number => typeof v === 'number');
-  const scores = rows.map((r) => r.performance_score).filter((v): v is number => typeof v === 'number');
+  const scores = rows
+    .map((r) => r.performance_score)
+    .filter((v): v is number => typeof v === 'number');
   return {
     lcp: percentile(lcps, 75),
     score: percentile(scores, 75),
@@ -53,24 +55,34 @@ function latestRuns(db: HistoryDB, url: string, preset: string): RunRow[] {
 }
 
 function baselineRuns(db: HistoryDB, url: string, preset: string, baselineTag?: string): RunRow[] {
-  if (baselineTag) return db.runsByTag(url, baselineTag).filter((r) => r.preset === preset && !r.error);
+  if (baselineTag)
+    return db.runsByTag(url, baselineTag).filter((r) => r.preset === preset && !r.error);
   const rows = db.recentRuns(url, preset, 200).filter((r) => !r.error);
   if (rows.length < 2) return [];
   const latest = rows[0];
-  const older = rows.find((r) => (r.tag ?? '') !== (latest.tag ?? '') || r.started_at !== latest.started_at);
+  const older = rows.find(
+    (r) => (r.tag ?? '') !== (latest.tag ?? '') || r.started_at !== latest.started_at
+  );
   if (!older) return [];
   const tag = older.tag ?? undefined;
   const started = older.started_at;
-  return rows.filter((r) => (r.tag ?? undefined) === tag && r.started_at === started && r.preset === preset);
+  return rows.filter(
+    (r) => (r.tag ?? undefined) === tag && r.started_at === started && r.preset === preset
+  );
 }
 
 function classifyDelta(
   metric: 'lcp' | 'performance_score',
   baseline?: number,
   latest?: number,
-  thresholds?: { lcpMs?: number; lcpPct?: number; score?: number },
+  thresholds?: { lcpMs?: number; lcpPct?: number; score?: number }
 ): { delta?: number; deltaPct?: number; direction: 'regressed' | 'improved' | 'stable' } {
-  if (baseline === undefined || latest === undefined || !Number.isFinite(baseline) || !Number.isFinite(latest)) {
+  if (
+    baseline === undefined ||
+    latest === undefined ||
+    !Number.isFinite(baseline) ||
+    !Number.isFinite(latest)
+  ) {
     return { direction: 'stable' };
   }
   const delta = latest - baseline;
@@ -214,5 +226,3 @@ export function summarizeWatchlist(queue: WatchlistQueueItem[]): {
     stable: queue.filter((q) => q.status === 'stable').length,
   };
 }
-
-export type { WatchlistEntry };

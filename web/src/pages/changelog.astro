@@ -1,0 +1,109 @@
+---
+import '../styles/global.css';
+import PublicRouteHead from '../components/PublicRouteHead.astro';
+
+const sourceUrl =
+  'https://github.com/sass-maker/psi-swarm';
+const roadmapUrl =
+  'https://github.com/sass-maker/psi-swarm/issues';
+
+const entries = [
+  {
+    date: '2026-07-03',
+    label: 'July 3, 2026',
+    title: 'The local web controller became a complete workflow',
+    body: 'The `psi-swarm web` command now starts the local agent and opens the browser UI. Users can run, compare, and inspect swarms from the browser while results and compute remain local.',
+    tags: ['Web controller', 'Local-first'],
+  },
+  {
+    date: '2026-07-02',
+    label: 'July 2, 2026',
+    title: 'Manual deploys gained a release guard',
+    body: 'The repository deploy command now verifies the intended workflow and build before a human-triggered production release.',
+    tags: ['Release', 'Operations'],
+  },
+  {
+    date: '2026-06-26',
+    label: 'June 26, 2026',
+    title: 'The public demo stopped probing localhost by default',
+    body: 'Agent connection checks now run only on localhost or when a visitor explicitly provides agent intent. The deployed static site no longer produces failed local-agent requests on an ordinary visit.',
+    tags: ['Privacy', 'Public site'],
+  },
+  {
+    date: '2026-06-13',
+    label: 'June 13, 2026',
+    title: 'v0.4.0 added three evidence workflows',
+    body: 'Local regression watchlists, a static demo gallery, and saved trace insights shipped together, extending percentile reports into repeatable diagnosis and comparison workflows.',
+    tags: ['v0.4.0', 'Analysis'],
+  },
+] as const;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <PublicRouteHead route="changelog" />
+  </head>
+  <body class="min-h-screen">
+    <main class="max-w-5xl mx-auto px-6 py-10">
+      <header class="mb-16">
+        <a href="/" class="inline-flex min-h-11 items-center text-sm text-[var(--color-dim)] hover:text-[var(--color-text)]">
+          <span class="text-[var(--color-cyan)] font-bold">psi</span>-swarm
+        </a>
+        <p class="mt-12 font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-cyan)]">
+          Product history, measured and maintained
+        </p>
+        <h1 class="mt-4 max-w-3xl text-5xl sm:text-7xl font-bold tracking-tight">
+          What changed across the swarm.
+        </h1>
+        <p class="mt-6 max-w-2xl text-lg leading-8 text-[var(--color-dim)]">
+          Verified improvements to local measurement, diagnosis, and the public controller. Planned
+          work remains in GitHub Issues.
+        </p>
+        <nav class="mt-8 flex flex-wrap gap-3" aria-label="Project resources">
+          <a href={roadmapUrl} class="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-cyan)] px-4 text-sm font-semibold text-[var(--color-bg)]">
+            Roadmap
+          </a>
+          <a href={sourceUrl} class="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-border)] px-4 text-sm font-semibold hover:border-[var(--color-cyan)]">
+            Source
+          </a>
+        </nav>
+      </header>
+
+      <section aria-label="psi-swarm releases">
+        {entries.map((entry) => (
+          <article class="grid gap-3 border-t border-[var(--color-border)] py-8 sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-8">
+            <time datetime={entry.date} class="font-mono text-xs font-medium text-[var(--color-dim)]">
+              {entry.label}
+            </time>
+            <div>
+              <h2 class="text-2xl font-semibold tracking-tight">{entry.title}</h2>
+              <p class="mt-3 max-w-[70ch] leading-7 text-[var(--color-dim)]">{entry.body}</p>
+              <ul class="mt-5 flex flex-wrap gap-2 p-0 list-none" aria-label="Update categories">
+                {entry.tags.map((tag) => (
+                  <li class="rounded-full bg-[color-mix(in_srgb,var(--color-cyan)_12%,transparent)] px-3 py-1 font-mono text-xs text-[var(--color-cyan)]">
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <footer class="mt-10 flex flex-col gap-4 border-t border-[var(--color-border)] py-8 text-sm text-[var(--color-dim)] sm:flex-row sm:justify-between">
+        <span>Repeated Lighthouse runs. Local history. No telemetry.</span>
+        <nav class="flex flex-wrap gap-5" aria-label="Footer navigation">
+          <a href="/" class="hover:text-[var(--color-text)]">dashboard</a>
+          <a href={roadmapUrl} class="hover:text-[var(--color-text)]">roadmap</a>
+          <a href={sourceUrl} class="hover:text-[var(--color-text)]">source</a>
+        </nav>
+      </footer>
+    </main>
+  </body>
+</html>

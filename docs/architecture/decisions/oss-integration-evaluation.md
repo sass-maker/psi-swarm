@@ -1,4 +1,14 @@
-# OSS Integration Evaluation
+---
+title: ADR — OSS integration evaluation
+description: Evaluated OSS perf tools to integrate; decided to keep Lighthouse and add an optional trace-insight adapter.
+---
+
+# ADR: OSS integration evaluation
+
+**Status:** Active · **Date:** 2026-06-09
+
+> Originally a standalone evaluation; moved into `architecture/decisions/`
+> because its output is a decision. Content preserved as-is.
 
 Last updated: 2026-06-09
 
@@ -40,6 +50,6 @@ LLM-readable diagnosis while preserving the existing percentile tables.
 Docs-only evaluation in this pass. Run:
 
 ```bash
-npm run build:cli
-npm run build:web
+pnpm run build:cli
+pnpm run build:web
 ```

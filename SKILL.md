@@ -1,11 +1,13 @@
 ---
 name: psi-swarm
-description: Run distributional Lighthouse audits with grounded LLM reasoning on any URL. Use when the user asks about web performance, Core Web Vitals (LCP/CLS/INP/TBT/FCP/TTFB), PageSpeed Insights, Lighthouse scores, "is my site fast?", "why is X slow?", comparing perf before/after a change, or analysing render-blocking resources / hero image weight / unused JS. Returns p50/p75/p90/p99 across realistic device/network presets plus a natural-language explanation grounded in actual audit findings (LCP element, phase breakdown, ranked opportunities with byte/ms savings).
+description: Subskill of site-health — distributional Lighthouse audits with grounded LLM reasoning on any URL. Use when the user asks about web performance, Core Web Vitals (LCP/CLS/INP/TBT/FCP/TTFB), PageSpeed Insights, Lighthouse scores, "is my site fast?", "why is X slow?", comparing perf before/after a change, or analysing render-blocking resources / hero image weight / unused JS. Returns p50/p75/p90/p99 across realistic device/network presets plus a natural-language explanation grounded in actual audit findings (LCP element, phase breakdown, ranked opportunities with byte/ms savings).
 ---
 
 # psi-swarm — distributional Lighthouse with reasoning
 
-You have access to **psi-swarm** ([github.com/sarthakagrawal927/psi-swarm](https://github.com/sarthakagrawal927/psi-swarm)) — a CLI tool that runs Lighthouse many times against a URL across realistic device/network presets, then explains the results.
+Subskill of `site-health` — invoked directly or via the parent router.
+
+You have access to **psi-swarm** — a CLI tool that runs Lighthouse many times against a URL across realistic device/network presets, then explains the results. This standalone repository is its canonical home.
 
 ## When to invoke
 
@@ -22,20 +24,18 @@ Don't use this for: general web-dev advice without a URL, RUM/field-data-only qu
 
 ## Setup — check it's available
 
-```bash
-# Option 1: clone if missing
-if [ ! -d ~/.psi-swarm-local ]; then
-  git clone https://github.com/sarthakagrawal927/psi-swarm.git ~/.psi-swarm-local
-  cd ~/.psi-swarm-local && npm install && npm --workspace cli run build
-fi
+psi-swarm lives at `~/Desktop/fleet/psi-swarm/`.
+The CLI binary is `node ~/Desktop/fleet/psi-swarm/cli/dist/cli.js`.
 
-# Option 2: if user has it elsewhere, prefer their copy
-which psi-swarm || echo "use ~/.psi-swarm-local/cli/dist/cli.js"
+If `cli/dist/cli.js` is missing, build it once:
+
+```bash
+cd ~/Desktop/fleet/psi-swarm && pnpm install && pnpm --workspace cli run build
 ```
 
-The CLI binary is `node ~/.psi-swarm-local/cli/dist/cli.js` (or wherever the user installed it).
-
-> **Node version**: psi-swarm requires Node 20-23. Lighthouse 12 crashes on Node 24. If the user is on Node 24, suggest `nvm use 22` or installing nvm.
+> **Node version**: use the Node version that installed `node_modules`; the
+> native `better-sqlite3` binding must match it. The current Fleet installation
+> is verified on Node 24. Re-run `pnpm install` after changing Node versions.
 
 ## How to invoke
 
@@ -46,13 +46,13 @@ The CLI binary is `node ~/.psi-swarm-local/cli/dist/cli.js` (or wherever the use
 For **product-level "is my site fast enough" questions** — use the `coverage` preset group + `coverage` profile. This runs every device class (slow 3G low-end Android, slow 4G mid Android, fast 4G iPhone, desktop cable) and gives a single weighted verdict representing ~globally-distributed real users:
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets coverage --profile coverage --reason --output html --output-path /tmp/psi-<slug>.html
+node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets coverage --profile coverage --reason --output html
 ```
 
 For **focused PSI-style checks** (PageSpeed Insights matches mobile-mid + desktop only):
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets psi --reason --output html --output-path /tmp/psi-<slug>.html
+node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets psi --reason --output html
 ```
 
 After the run completes, tell the user:
@@ -66,7 +66,7 @@ The HTML is self-contained (~10-17 KB, inline CSS, no external assets). They can
 For a fast directional check:
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 2 --presets desktop --reason --output html --output-path /tmp/psi-quick.html
+node <psi-swarm>/cli/dist/cli.js run <URL> --runs 2 --presets desktop --reason --output html
 ```
 
 ### Comparing two URLs or two states
@@ -104,7 +104,6 @@ If neither is set, the swarm still runs and shows the deterministic "Why?" secti
 | `--parallel auto` | Concurrent preset execution. Faster but adds CPU-throttling noise. |
 | `--profile mobile-heavy|desktop-heavy|balanced|mobile-only` | Weighted "fleet verdict" line matching your traffic mix. |
 | `--no-crux` | Skip CrUX field-data lookup. (Auto-skipped if `CRUX_API_KEY` not set.) |
-| `--no-ahrefs` | Skip Ahrefs Domain Rating lookup. (Auto-skipped for `*.pages.dev` / `*.workers.dev`.) |
 | `--tag <name>` | Tag this swarm for later `compare`. |
 
 ## Interpreting the output
@@ -115,10 +114,9 @@ A complete run produces these sections in order:
 3. **`CWV LCP gate (p75 ≤ 2.5s)`** — naive overall verdict
 4. **`Weighted verdict (<profile>)`** — only if `--profile` is set; matches traffic mix
 5. **`Real users (CrUX p75)`** — only if `CRUX_API_KEY` is set and site is in CrUX
-6. **`Domain authority (Ahrefs DR)`** — only for custom domains (not `*.pages.dev` / `*.workers.dev`); free public endpoint, no API key
-7. **`Lab vs field gap`** — only if both lab and CrUX data exist; tells you whether the lab is over- or under-stating real-user experience
-8. **`Why <preset>?`** — LCP element + LCP phase breakdown (TTFB / Load Delay / Load Time / Render Delay) + ranked opportunities table
-9. **`Reasoning`** — LLM narrative (only with `--reason`)
+6. **`Lab vs field gap`** — only if both lab and CrUX data exist; tells you whether the lab is over- or under-stating real-user experience
+7. **`Why <preset>?`** — LCP element + LCP phase breakdown (TTFB / Load Delay / Load Time / Render Delay) + ranked opportunities table
+8. **`Reasoning`** — LLM narrative (only with `--reason`)
 
 **Quick-read heuristic for the user:**
 - If `mobile-mid` LCP is "POOR" but `mobile-fast` and `desktop` are "GOOD" → the test was strict for the bottom-quartile user, not a real product issue.
@@ -145,7 +143,7 @@ Codex (OpenAI's CLI) reads `AGENTS.md` files instead of Claude's skill system. T
 When the user asks about web performance of a URL (Lighthouse / Core Web Vitals / LCP / "is X slow"), run:
   node ~/.psi-swarm-local/cli/dist/cli.js run <URL> --runs 5 --reason
 
-Full docs: https://github.com/sarthakagrawal927/psi-swarm
+Full docs: https://github.com/sass-maker/psi-swarm
 ```
 
 The CLI is otherwise identical — no Codex-specific changes needed.

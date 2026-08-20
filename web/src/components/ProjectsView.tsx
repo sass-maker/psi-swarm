@@ -88,18 +88,44 @@ const tierColor: Record<string, string> = {
 
 const MIN_SPARKLINE_SPAN_MS = 12 * 60 * 60 * 1000;
 
-function Sparkline({ values, height = 22, width = 90 }: { values: number[]; height?: number; width?: number }) {
+function Sparkline({
+  values,
+  height = 22,
+  width = 90,
+}: {
+  values: number[];
+  height?: number;
+  width?: number;
+}) {
   if (values.length === 0) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
   const dx = width / Math.max(1, values.length - 1);
-  const points = values.map((v, i) => `${(i * dx).toFixed(1)},${(height - ((v - min) / range) * (height - 2) - 1).toFixed(1)}`).join(' ');
+  const points = values
+    .map(
+      (v, i) =>
+        `${(i * dx).toFixed(1)},${(height - ((v - min) / range) * (height - 2) - 1).toFixed(1)}`
+    )
+    .join(' ');
   const last = values[values.length - 1];
   return (
     <svg width={width} height={height} className="overflow-visible">
-      <polyline fill="none" stroke="var(--color-cyan)" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" points={points} opacity={0.85} />
-      <circle cx={(values.length - 1) * dx} cy={height - ((last - min) / range) * (height - 2) - 1} r={2.5} fill={tierColor[lcpTier(last)]} />
+      <polyline
+        fill="none"
+        stroke="var(--color-cyan)"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={points}
+        opacity={0.85}
+      />
+      <circle
+        cx={(values.length - 1) * dx}
+        cy={height - ((last - min) / range) * (height - 2) - 1}
+        r={2.5}
+        fill={tierColor[lcpTier(last)]}
+      />
     </svg>
   );
 }
@@ -123,7 +149,10 @@ export default function ProjectsView() {
   const connect = useCallback(async (mode: 'auto' | 'explicit') => {
     setStatus('probing');
     const conn = await connectToAgent(mode);
-    if (!conn) { setStatus('disconnected'); return; }
+    if (!conn) {
+      setStatus('disconnected');
+      return;
+    }
     setClient(conn.client);
     setHealth(conn.health);
     setStatus('ready');
@@ -144,7 +173,9 @@ export default function ProjectsView() {
       for (const proj of data.projects ?? []) {
         if (!expandedProjects.has(proj.origin)) continue;
         for (const pg of proj.pages) {
-          const r = await fetch(client.requestUrl('/api/projects/history', { url: pg.url, limit: 40 }));
+          const r = await fetch(
+            client.requestUrl('/api/projects/history', { url: pg.url, limit: 40 })
+          );
           const h = (await r.json()) as { rows: HistoryRow[] };
           map.set(pg.url, h.rows ?? []);
         }
@@ -158,7 +189,9 @@ export default function ProjectsView() {
       setError((err as Error).message);
     }
   };
-  useEffect(() => { if (status === 'ready') void loadProjects(); }, [status, client]);
+  useEffect(() => {
+    if (status === 'ready') void loadProjects();
+  }, [status, client]);
 
   const runNew = async (url: string) => {
     if (!client) return;
@@ -181,14 +214,21 @@ export default function ProjectsView() {
       const failures: string[] = [];
       for (const pg of proj.pages) {
         try {
-          const { runId } = await client.startRun({ url: pg.url, runs: 3, presets: 'psi', parallel: 1 });
+          const { runId } = await client.startRun({
+            url: pg.url,
+            runs: 3,
+            presets: 'psi',
+            parallel: 1,
+          });
           await client.waitForRunCompletion(runId);
         } catch (err) {
           failures.push(`${pg.path}: ${(err as Error).message}`);
         }
       }
       if (failures.length > 0) {
-        setError(`Run all pages completed with ${failures.length} failure(s): ${failures.join(' | ')}`);
+        setError(
+          `Run all pages completed with ${failures.length} failure(s): ${failures.join(' | ')}`
+        );
       }
       await loadProjects();
     } catch (err) {
@@ -206,7 +246,11 @@ export default function ProjectsView() {
     if (!raw) return;
     // Allow either a full URL or a path
     const url = raw.startsWith('http') ? raw : `${origin}${raw.startsWith('/') ? '' : '/'}${raw}`;
-    setPageInputByOrigin((m) => { const n = new Map(m); n.delete(origin); return n; });
+    setPageInputByOrigin((m) => {
+      const n = new Map(m);
+      n.delete(origin);
+      return n;
+    });
     await runNew(url);
   };
   const toggleProject = async (origin: string) => {
@@ -221,7 +265,9 @@ export default function ProjectsView() {
       const map = new Map(historyByUrl);
       for (const pg of proj.pages) {
         if (map.has(pg.url)) continue;
-        const r = await fetch(client.requestUrl('/api/projects/history', { url: pg.url, limit: 40 }));
+        const r = await fetch(
+          client.requestUrl('/api/projects/history', { url: pg.url, limit: 40 })
+        );
         const h = (await r.json()) as { rows: HistoryRow[] };
         map.set(pg.url, h.rows ?? []);
       }
@@ -230,18 +276,32 @@ export default function ProjectsView() {
   };
   const togglePage = (url: string) => {
     const next = new Set(expandedPages);
-    if (next.has(url)) next.delete(url); else next.add(url);
+    if (next.has(url)) next.delete(url);
+    else next.add(url);
     setExpandedPages(next);
   };
 
-  if (status === 'probing') return <Panel><span className="text-[var(--color-dim)]">Looking for local psi-swarm agent…</span></Panel>;
-  if (status === 'disconnected') return (
-    <Panel>
-      <h2 className="text-xl font-semibold mb-3">No local agent running</h2>
-      <p className="text-[var(--color-dim)] text-sm mb-3">Start it: <code className="text-[var(--color-cyan)]">pnpm run serve</code></p>
-      <button onClick={() => void connect('explicit')} className="px-4 py-2 bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition">Connect to local agent</button>
-    </Panel>
-  );
+  if (status === 'probing')
+    return (
+      <Panel>
+        <span className="text-[var(--color-dim)]">Looking for local psi-swarm agent…</span>
+      </Panel>
+    );
+  if (status === 'disconnected')
+    return (
+      <Panel>
+        <h2 className="text-xl font-semibold mb-3">No local agent running</h2>
+        <p className="text-[var(--color-dim)] text-sm mb-3">
+          Start it: <code className="text-[var(--color-cyan)]">pnpm run serve</code>
+        </p>
+        <button
+          onClick={() => void connect('explicit')}
+          className="px-4 py-2 bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition"
+        >
+          Connect to local agent
+        </button>
+      </Panel>
+    );
 
   return (
     <div className="space-y-6">
@@ -250,21 +310,45 @@ export default function ProjectsView() {
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-[var(--color-good)] animate-pulse" />
             <span className="text-[var(--color-dim)]">connected</span>
-            <span className="font-mono text-[var(--color-dim)]">{health.machine.cores} cores · {health.machine.totalMemGB.toFixed(1)} GB</span>
+            <span className="font-mono text-[var(--color-dim)]">
+              {health.machine.cores} cores · {health.machine.totalMemGB.toFixed(1)} GB
+            </span>
           </div>
-          <span className="text-[var(--color-dim)] font-mono text-xs">{projects.length} projects · {projects.reduce((s, p) => s + p.pageCount, 0)} pages tracked</span>
+          <span className="text-[var(--color-dim)] font-mono text-xs">
+            {projects.length} projects · {projects.reduce((s, p) => s + p.pageCount, 0)} pages
+            tracked
+          </span>
         </div>
       )}
 
       <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg p-5 flex gap-3">
-        <input type="url" placeholder="Add a new project — https://example.com" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addProject()} className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 font-mono text-sm focus:outline-none focus:border-[var(--color-cyan)]" />
-        <button onClick={addProject} disabled={!newUrl.trim()} className="px-5 py-2 bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition disabled:opacity-40">Track + run</button>
+        <input
+          type="url"
+          placeholder="Add a new project — https://example.com"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addProject()}
+          className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 font-mono text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+        />
+        <button
+          onClick={addProject}
+          disabled={!newUrl.trim()}
+          className="px-5 py-2 bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition disabled:opacity-40"
+        >
+          Track + run
+        </button>
       </div>
 
-      {error && <div className="border border-[var(--color-poor)] bg-red-950/30 text-[var(--color-poor)] rounded p-3 text-sm font-mono">{error}</div>}
+      {error && (
+        <div className="border border-[var(--color-poor)] bg-red-950/30 text-[var(--color-poor)] rounded p-3 text-sm font-mono">
+          {error}
+        </div>
+      )}
 
       {projects.length === 0 ? (
-        <div className="text-center text-[var(--color-dim)] text-sm py-12">No projects tracked yet. Add a URL above to start.</div>
+        <div className="text-center text-[var(--color-dim)] text-sm py-12">
+          No projects tracked yet. Add a URL above to start.
+        </div>
       ) : (
         <div className="space-y-3">
           {projects.map((proj) => (
@@ -274,34 +358,44 @@ export default function ProjectsView() {
               client={client!}
               expanded={expandedProjects.has(proj.origin)}
               onToggle={() => toggleProject(proj.origin)}
-              expandedPages={expandedPages}
-              onTogglePage={togglePage}
-              historyByUrl={historyByUrl}
-              runningUrl={runningUrl}
-              onRunPage={(url) => runNew(url)}
-              onRunAll={() => runAllPages(proj)}
-              pageInput={pageInputByOrigin.get(proj.origin) ?? ''}
-              setPageInput={(v) => setPageInputByOrigin((m) => { const n = new Map(m); n.set(proj.origin, v); return n; })}
-              onAddPage={() => addPage(proj.origin)}
+              pages={{
+                expandedPages,
+                onTogglePage: togglePage,
+                historyByUrl,
+                runningUrl,
+                onRunPage: (url) => runNew(url),
+                onRunAll: () => runAllPages(proj),
+                pageInput: pageInputByOrigin.get(proj.origin) ?? '',
+                setPageInput: (v) =>
+                  setPageInputByOrigin((m) => {
+                    const n = new Map(m);
+                    n.set(proj.origin, v);
+                    return n;
+                  }),
+                onAddPage: () => addPage(proj.origin),
+              }}
             />
           ))}
         </div>
       )}
 
-      <div className="text-xs text-[var(--color-dim)] pt-4 text-center">"Run new" + "Run all pages" start 3-run psi-group swarms in the background (~3 min each). Refresh after to see new numbers.</div>
+      <div className="text-xs text-[var(--color-dim)] pt-4 text-center">
+        "Run new" + "Run all pages" start 3-run psi-group swarms in the background (~3 min each).
+        Refresh after to see new numbers.
+      </div>
     </div>
   );
 }
 
 function Panel({ children }: { children: React.ReactNode }) {
-  return <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg p-8">{children}</div>;
+  return (
+    <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg p-8">
+      {children}
+    </div>
+  );
 }
 
-interface ProjectCardProps {
-  proj: ProjectGrouped;
-  client: AgentClient;
-  expanded: boolean;
-  onToggle: () => void;
+interface ProjectCardPages {
   expandedPages: Set<string>;
   onTogglePage: (url: string) => void;
   historyByUrl: Map<string, HistoryRow[]>;
@@ -313,35 +407,83 @@ interface ProjectCardProps {
   onAddPage: () => void;
 }
 
-function ProjectCard({ proj, client, expanded, onToggle, expandedPages, onTogglePage, historyByUrl, runningUrl, onRunPage, onRunAll, pageInput, setPageInput, onAddPage }: ProjectCardProps) {
-  const host = useMemo(() => { try { return new URL(proj.origin).host; } catch { return proj.origin; } }, [proj.origin]);
+interface ProjectCardProps {
+  proj: ProjectGrouped;
+  client: AgentClient;
+  expanded: boolean;
+  onToggle: () => void;
+  pages: ProjectCardPages;
+}
+
+function ProjectCard({ proj, client, expanded, onToggle, pages }: ProjectCardProps) {
+  const host = useMemo(() => {
+    try {
+      return new URL(proj.origin).host;
+    } catch {
+      return proj.origin;
+    }
+  }, [proj.origin]);
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-panel)] rounded-lg overflow-hidden">
       <div className="px-5 py-4 grid grid-cols-[1fr_100px_140px_140px_140px_auto] gap-4 items-center">
         <div>
-          <button onClick={onToggle} className="font-semibold text-left hover:text-[var(--color-cyan)] transition flex items-center gap-2">
+          <button
+            onClick={onToggle}
+            className="font-semibold text-left hover:text-[var(--color-cyan)] transition flex items-center gap-2"
+          >
             <span className="text-xs text-[var(--color-dim)]">{expanded ? '▼' : '▶'}</span>
             {host}
           </button>
           <div className="text-xs text-[var(--color-dim)] mt-0.5">
-            {proj.pageCount} page{proj.pageCount === 1 ? '' : 's'} · {proj.totalRuns} runs · last {fmtRelative(proj.lastRunAt)}
+            {proj.pageCount} page{proj.pageCount === 1 ? '' : 's'} · {proj.totalRuns} runs · last{' '}
+            {fmtRelative(proj.lastRunAt)}
             {proj.isCloudflarePlatform && <span> · CF platform</span>}
           </div>
         </div>
-        <DrCell value={proj.domainRating} cfPlatform={proj.isCloudflarePlatform} checked={proj.domainRatingFetchedAt !== undefined} />
+        <DrCell
+          value={proj.domainRating}
+          cfPlatform={proj.isCloudflarePlatform}
+          checked={proj.domainRatingFetchedAt !== undefined}
+        />
         <Worst label="worst desktop" value={proj.worstDesktopLcp} />
         <Worst label="worst mobile" value={proj.worstMobileLcp} />
         <ClsCell value={proj.worstCls} />
-        <button onClick={onRunAll} className="px-3 py-1.5 text-xs bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition">Run all pages</button>
+        <button
+          onClick={pages.onRunAll}
+          className="px-3 py-1.5 text-xs bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition"
+        >
+          Run all pages
+        </button>
       </div>
       {expanded && (
         <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
           {proj.pages.map((pg) => (
-            <PageRowComp key={pg.url} pg={pg} expanded={expandedPages.has(pg.url)} onToggle={() => onTogglePage(pg.url)} history={historyByUrl.get(pg.url) ?? []} running={runningUrl === pg.url} onRun={() => onRunPage(pg.url)} />
+            <PageRowComp
+              key={pg.url}
+              pg={pg}
+              client={client}
+              expanded={pages.expandedPages.has(pg.url)}
+              onToggle={() => pages.onTogglePage(pg.url)}
+              history={pages.historyByUrl.get(pg.url) ?? []}
+              run={{ running: pages.runningUrl === pg.url, onRun: () => pages.onRunPage(pg.url) }}
+            />
           ))}
           <div className="px-5 py-3 flex gap-2 border-t border-[var(--color-border)]">
-            <input type="text" placeholder="Add page — /about or full URL" value={pageInput} onChange={(e) => setPageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onAddPage()} className="flex-1 bg-[var(--color-panel)] border border-[var(--color-border)] rounded px-3 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--color-cyan)]" />
-            <button onClick={onAddPage} disabled={!pageInput.trim()} className="px-3 py-1.5 text-xs bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition disabled:opacity-40">Add page</button>
+            <input
+              type="text"
+              placeholder="Add page — /about or full URL"
+              value={pages.pageInput}
+              onChange={(e) => pages.setPageInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && pages.onAddPage()}
+              className="flex-1 bg-[var(--color-panel)] border border-[var(--color-border)] rounded px-3 py-1.5 font-mono text-xs focus:outline-none focus:border-[var(--color-cyan)]"
+            />
+            <button
+              onClick={pages.onAddPage}
+              disabled={!pages.pageInput.trim()}
+              className="px-3 py-1.5 text-xs bg-[var(--color-cyan)] text-black rounded font-medium hover:opacity-90 transition disabled:opacity-40"
+            >
+              Add page
+            </button>
           </div>
         </div>
       )}
@@ -353,7 +495,9 @@ function Worst({ label, value }: { label: string; value: number | undefined }) {
   return (
     <div>
       <div className="text-xs text-[var(--color-dim)] uppercase tracking-wide">{label}</div>
-      <div className="font-mono text-sm" style={{ color: tierColor[lcpTier(value)] }}>{fmtMs(value)}</div>
+      <div className="font-mono text-sm" style={{ color: tierColor[lcpTier(value)] }}>
+        {fmtMs(value)}
+      </div>
     </div>
   );
 }
@@ -361,11 +505,21 @@ function ClsCell({ value }: { value: number | undefined }) {
   return (
     <div className="text-right">
       <div className="text-xs text-[var(--color-dim)] uppercase tracking-wide">worst CLS</div>
-      <div className="font-mono text-sm" style={{ color: tierColor[clsTier(value)] }}>{typeof value === 'number' ? value.toFixed(3) : '—'}</div>
+      <div className="font-mono text-sm" style={{ color: tierColor[clsTier(value)] }}>
+        {typeof value === 'number' ? value.toFixed(3) : '—'}
+      </div>
     </div>
   );
 }
-function DrCell({ value, cfPlatform, checked }: { value: number | undefined; cfPlatform?: boolean; checked?: boolean }) {
+function DrCell({
+  value,
+  cfPlatform,
+  checked,
+}: {
+  value: number | undefined;
+  cfPlatform?: boolean;
+  checked?: boolean;
+}) {
   // '…' only while a first lookup is pending; once checked (or ineligible) show '—'.
   return (
     <div>
@@ -377,7 +531,21 @@ function DrCell({ value, cfPlatform, checked }: { value: number | undefined; cfP
   );
 }
 
-function PageRowComp({ pg, expanded, onToggle, history, running, onRun }: { pg: PageRow; expanded: boolean; onToggle: () => void; history: HistoryRow[]; running: boolean; onRun: () => void }) {
+function PageRowComp({
+  pg,
+  client,
+  expanded,
+  onToggle,
+  history,
+  run,
+}: {
+  pg: PageRow;
+  client: AgentClient;
+  expanded: boolean;
+  onToggle: () => void;
+  history: HistoryRow[];
+  run: { running: boolean; onRun: () => void };
+}) {
   const desktopRuns = history.filter((r) => r.preset === 'desktop' && typeof r.lcp === 'number');
   const mobileRuns = history.filter((r) => r.preset === 'mobile-mid' && typeof r.lcp === 'number');
   const desktopLcps = desktopRuns.map((r) => r.lcp as number).reverse();
@@ -388,19 +556,36 @@ function PageRowComp({ pg, expanded, onToggle, history, running, onRun }: { pg: 
     <>
       <div className="px-5 py-2.5 grid grid-cols-[1fr_100px_140px_140px_140px_auto] gap-4 items-center border-t border-[var(--color-border)] first:border-t-0">
         <div>
-          <button onClick={onToggle} className="text-sm font-mono text-left hover:text-[var(--color-cyan)] transition flex items-center gap-2">
+          <button
+            onClick={onToggle}
+            className="text-sm font-mono text-left hover:text-[var(--color-cyan)] transition flex items-center gap-2"
+          >
             <span className="text-xs text-[var(--color-dim)]">{expanded ? '▼' : '▶'}</span>
             {pg.path}
           </button>
-          <div className="text-xs text-[var(--color-dim)] mt-0.5">n={pg.totalRuns} · last {fmtRelative(pg.lastRunAt)}</div>
+          <div className="text-xs text-[var(--color-dim)] mt-0.5">
+            n={pg.totalRuns} · last {fmtRelative(pg.lastRunAt)}
+          </div>
         </div>
         {/* Empty cell — DR is per-project, keeps page rows aligned with the card header grid. */}
         <div />
-        <PageMetric label="desktop LCP" value={pg.desktopLcpP75} lcps={desktopLcps} timestamps={desktopTs} />
-        <PageMetric label="mobile LCP" value={pg.mobileLcpP75} lcps={mobileLcps} timestamps={mobileTs} />
+        <PageMetric
+          label="desktop LCP"
+          value={pg.desktopLcpP75}
+          lcps={desktopLcps}
+          timestamps={desktopTs}
+        />
+        <PageMetric
+          label="mobile LCP"
+          value={pg.mobileLcpP75}
+          lcps={mobileLcps}
+          timestamps={mobileTs}
+        />
         <div className="text-right">
           <div className="text-xs text-[var(--color-dim)] uppercase tracking-wide">CLS</div>
-          <div className="font-mono text-sm" style={{ color: tierColor[clsTier(pg.cls)] }}>{typeof pg.cls === 'number' ? pg.cls.toFixed(3) : '—'}</div>
+          <div className="font-mono text-sm" style={{ color: tierColor[clsTier(pg.cls)] }}>
+            {typeof pg.cls === 'number' ? pg.cls.toFixed(3) : '—'}
+          </div>
         </div>
         <div className="flex items-center justify-end gap-2">
           {(pg.reportCount ?? 0) > 0 && (
@@ -414,7 +599,13 @@ function PageRowComp({ pg, expanded, onToggle, history, running, onRun }: { pg: 
               analysis →
             </a>
           )}
-          <button onClick={onRun} disabled={running} className="px-3 py-1 text-xs bg-[var(--color-bg)] border border-[var(--color-cyan)] text-[var(--color-cyan)] rounded hover:bg-[var(--color-cyan)] hover:text-black transition disabled:opacity-40">{running ? '…running' : 'Run'}</button>
+          <button
+            onClick={run.onRun}
+            disabled={run.running}
+            className="px-3 py-1 text-xs bg-[var(--color-bg)] border border-[var(--color-cyan)] text-[var(--color-cyan)] rounded hover:bg-[var(--color-cyan)] hover:text-black transition disabled:opacity-40"
+          >
+            {run.running ? '…running' : 'Run'}
+          </button>
         </div>
       </div>
       {expanded && <HistoryDetail rows={history} />}
@@ -422,15 +613,33 @@ function PageRowComp({ pg, expanded, onToggle, history, running, onRun }: { pg: 
   );
 }
 
-function PageMetric({ label, value, lcps, timestamps }: { label: string; value: number | undefined; lcps: number[]; timestamps: number[] }) {
+function PageMetric({
+  label,
+  value,
+  lcps,
+  timestamps,
+}: {
+  label: string;
+  value: number | undefined;
+  lcps: number[];
+  timestamps: number[];
+}) {
   const span = timestamps.length > 1 ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
   const showSparkline = span >= MIN_SPARKLINE_SPAN_MS && lcps.length > 2;
   return (
     <div>
       <div className="text-xs text-[var(--color-dim)] uppercase tracking-wide">{label}</div>
-      <div className="font-mono text-sm" style={{ color: tierColor[lcpTier(value)] }}>{fmtMs(value)}</div>
+      <div className="font-mono text-sm" style={{ color: tierColor[lcpTier(value)] }}>
+        {fmtMs(value)}
+      </div>
       <div className="mt-0.5 text-[10px] text-[var(--color-dim)]">
-        {showSparkline ? <Sparkline values={lcps} /> : lcps.length > 0 ? `n=${lcps.length}${span > 0 ? ` · ${fmtSpan(span)}` : ''}` : '—'}
+        {showSparkline ? (
+          <Sparkline values={lcps} />
+        ) : lcps.length > 0 ? (
+          `n=${lcps.length}${span > 0 ? ` · ${fmtSpan(span)}` : ''}`
+        ) : (
+          '—'
+        )}
       </div>
     </div>
   );
@@ -443,9 +652,14 @@ function HistoryDetail({ rows }: { rows: HistoryRow[] }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="text-[var(--color-dim)] uppercase tracking-wide">
-            <th className="text-left py-1">When</th><th className="text-left py-1">Preset</th>
-            <th className="text-right py-1">LCP</th><th className="text-right py-1">CLS</th><th className="text-right py-1">TBT</th>
-            <th className="text-right py-1">FCP</th><th className="text-right py-1">TTFB</th><th className="text-right py-1">Perf</th>
+            <th className="text-left py-1">When</th>
+            <th className="text-left py-1">Preset</th>
+            <th className="text-right py-1">LCP</th>
+            <th className="text-right py-1">CLS</th>
+            <th className="text-right py-1">TBT</th>
+            <th className="text-right py-1">FCP</th>
+            <th className="text-right py-1">TTFB</th>
+            <th className="text-right py-1">Perf</th>
             <th className="text-left py-1">Tag</th>
           </tr>
         </thead>
@@ -454,18 +668,37 @@ function HistoryDetail({ rows }: { rows: HistoryRow[] }) {
             <tr key={i} className="border-t border-[var(--color-border)]">
               <td className="py-1 text-[var(--color-dim)]">{fmtRelative(r.started_at)}</td>
               <td className="py-1">{r.preset}</td>
-              <td className="text-right py-1" style={{ color: tierColor[lcpTier(r.lcp ?? undefined)] }}>{fmtMs(r.lcp ?? undefined)}</td>
-              <td className="text-right py-1 text-[var(--color-dim)]">{typeof r.cls === 'number' ? r.cls.toFixed(3) : '—'}</td>
-              <td className="text-right py-1 text-[var(--color-dim)]">{fmtMs(r.tbt ?? undefined)}</td>
-              <td className="text-right py-1 text-[var(--color-dim)]">{fmtMs(r.fcp ?? undefined)}</td>
-              <td className="text-right py-1 text-[var(--color-dim)]">{fmtMs(r.ttfb ?? undefined)}</td>
-              <td className="text-right py-1 text-[var(--color-dim)]">{typeof r.performance_score === 'number' ? Math.round(r.performance_score) : '—'}</td>
+              <td
+                className="text-right py-1"
+                style={{ color: tierColor[lcpTier(r.lcp ?? undefined)] }}
+              >
+                {fmtMs(r.lcp ?? undefined)}
+              </td>
+              <td className="text-right py-1 text-[var(--color-dim)]">
+                {typeof r.cls === 'number' ? r.cls.toFixed(3) : '—'}
+              </td>
+              <td className="text-right py-1 text-[var(--color-dim)]">
+                {fmtMs(r.tbt ?? undefined)}
+              </td>
+              <td className="text-right py-1 text-[var(--color-dim)]">
+                {fmtMs(r.fcp ?? undefined)}
+              </td>
+              <td className="text-right py-1 text-[var(--color-dim)]">
+                {fmtMs(r.ttfb ?? undefined)}
+              </td>
+              <td className="text-right py-1 text-[var(--color-dim)]">
+                {typeof r.performance_score === 'number' ? Math.round(r.performance_score) : '—'}
+              </td>
               <td className="py-1 text-[var(--color-dim)]">{r.tag ?? ''}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {sorted.length > 30 && <div className="text-xs text-[var(--color-dim)] mt-2">Showing 30 of {sorted.length} runs.</div>}
+      {sorted.length > 30 && (
+        <div className="text-xs text-[var(--color-dim)] mt-2">
+          Showing 30 of {sorted.length} runs.
+        </div>
+      )}
     </div>
   );
 }

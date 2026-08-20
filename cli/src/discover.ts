@@ -106,7 +106,7 @@ function extractFromSitemap(xml: string, pageUrl: string): DiscoveredLink[] {
 
 export async function discover(
   pageUrl: string,
-  opts: { timeoutMs?: number; maxLinks?: number } = {},
+  opts: { timeoutMs?: number; maxLinks?: number } = {}
 ): Promise<DiscoveryResult> {
   const timeoutMs = opts.timeoutMs ?? 10_000;
   const maxLinks = opts.maxLinks ?? 25;
@@ -129,12 +129,4 @@ export async function discover(
     // Sitemap not found / not parseable. Fall through.
   }
   return { links: [], source: 'none' };
-}
-
-// Back-compat alias kept terse.
-export async function discoverLinks(
-  pageUrl: string,
-  opts?: { timeoutMs?: number; maxLinks?: number },
-): Promise<DiscoveredLink[]> {
-  return (await discover(pageUrl, opts)).links;
 }

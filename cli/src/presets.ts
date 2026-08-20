@@ -1,4 +1,4 @@
-export interface ThrottleConfig {
+interface ThrottleConfig {
   rttMs: number;
   throughputKbps: number;
   requestLatencyMs: number;
@@ -7,7 +7,7 @@ export interface ThrottleConfig {
   cpuSlowdownMultiplier: number;
 }
 
-export interface ScreenEmulation {
+interface ScreenEmulation {
   mobile: boolean;
   width: number;
   height: number;
@@ -125,26 +125,27 @@ export const PRESET_GROUPS: Record<string, string[]> = {
  * (devices × connection quality) for the most honest fleet-level number.
  */
 export const TRAFFIC_PROFILES: Record<string, Record<string, number>> = {
-  'mobile-heavy': { 'mobile-slow': 0.15, 'mobile-mid': 0.55, 'mobile-fast': 0.20, desktop: 0.10 },
-  'desktop-heavy': { 'mobile-mid': 0.15, 'mobile-fast': 0.15, desktop: 0.70 },
+  'mobile-heavy': { 'mobile-slow': 0.15, 'mobile-mid': 0.55, 'mobile-fast': 0.2, desktop: 0.1 },
+  'desktop-heavy': { 'mobile-mid': 0.15, 'mobile-fast': 0.15, desktop: 0.7 },
   balanced: { 'mobile-mid': 0.5, desktop: 0.5 },
   'mobile-only': { 'mobile-slow': 0.25, 'mobile-mid': 0.5, 'mobile-fast': 0.25 },
   // 99% device coverage — globally-representative mix of device class × network
   // quality. Sources: StatCounter (60/40 mobile/desktop), Web Almanac CrUX
   // breakdowns (within mobile: ~60% on fast 4G/5G, ~30% on slow 4G, ~10% on
   // 3G or congested 4G). Calibrate to your real audience by adjusting these.
-  coverage: { 'mobile-slow': 0.10, 'mobile-mid': 0.35, 'mobile-fast': 0.15, desktop: 0.40 },
+  coverage: { 'mobile-slow': 0.1, 'mobile-mid': 0.35, 'mobile-fast': 0.15, desktop: 0.4 },
 };
 
 export function resolvePresets(spec: string): Preset[] {
   if (PRESET_GROUPS[spec]) return PRESET_GROUPS[spec].map((n) => PRESETS[n]);
-  const names = spec.split(',').map((s) => s.trim()).filter(Boolean);
+  const names = spec
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   const resolved: Preset[] = [];
   for (const n of names) {
     if (!PRESETS[n]) {
-      throw new Error(
-        `Unknown preset: ${n}. Available: ${Object.keys(PRESETS).join(', ')}`,
-      );
+      throw new Error(`Unknown preset: ${n}. Available: ${Object.keys(PRESETS).join(', ')}`);
     }
     resolved.push(PRESETS[n]);
   }

@@ -2,48 +2,18 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import boxen from 'boxen';
 import type { RunResult } from './runner.js';
+import { hasValidMetrics } from './runner.js';
 import { computeStats, type Stats } from './stats.js';
-import { diagnosePreset, rankOpportunities, formatAggregatedAudit, type Diagnosis } from './diagnose.js';
+import {
+  diagnosePreset,
+  rankOpportunities,
+  formatAggregatedAudit,
+  type Diagnosis,
+} from './diagnose.js';
 import type { CruxRecord } from './crux.js';
 import type { DomainRatingResult } from './ahrefs.js';
 import type { TraceInsightRecord } from './trace-insight.js';
-
-type MetricKey =
-  | 'lcp'
-  | 'inp'
-  | 'cls'
-  | 'tbt'
-  | 'fcp'
-  | 'ttfb'
-  | 'si'
-  | 'performance_score';
-
-interface MetricSpec {
-  key: MetricKey;
-  label: string;
-  unit: 'ms' | 'score' | 'index';
-  good?: number;
-  poor?: number;
-  higherIsBetter?: boolean;
-}
-
-const METRICS: MetricSpec[] = [
-  {
-    key: 'performance_score',
-    label: 'Perf Score',
-    unit: 'score',
-    good: 90,
-    poor: 50,
-    higherIsBetter: true,
-  },
-  { key: 'lcp', label: 'LCP', unit: 'ms', good: 2500, poor: 4000 },
-  { key: 'inp', label: 'INP', unit: 'ms', good: 200, poor: 500 },
-  { key: 'cls', label: 'CLS', unit: 'index', good: 0.1, poor: 0.25 },
-  { key: 'tbt', label: 'TBT', unit: 'ms', good: 200, poor: 600 },
-  { key: 'fcp', label: 'FCP', unit: 'ms', good: 1800, poor: 3000 },
-  { key: 'ttfb', label: 'TTFB', unit: 'ms', good: 800, poor: 1800 },
-  { key: 'si', label: 'SI', unit: 'ms', good: 3400, poor: 5800 },
-];
+import { METRICS, type MetricSpec } from './metrics.js';
 
 function fmt(v: number, unit: MetricSpec['unit']): string {
   if (!Number.isFinite(v)) return '—';
@@ -129,10 +99,7 @@ function sparkline(values: number[], width = 32): string {
   }
   return buckets
     .map((v) => {
-      const idx = Math.min(
-        chars.length - 1,
-        Math.floor(((v - min) / range) * (chars.length - 1)),
-      );
+      const idx = Math.min(chars.length - 1, Math.floor(((v - min) / range) * (chars.length - 1)));
       return chars[idx];
     })
     .join('');
@@ -162,8 +129,8 @@ function overallVerdict(allResults: RunResult[]): string {
     p75 <= 2500
       ? chalk.green('GOOD')
       : p75 <= 4000
-      ? chalk.yellow('NEEDS WORK')
-      : chalk.red('POOR');
+        ? chalk.yellow('NEEDS WORK')
+        : chalk.red('POOR');
   return (
     chalk.dim('CWV LCP gate (p75 ≤ 2.5s): ') +
     verdict +
@@ -185,9 +152,9 @@ export function renderSwarmReport(
   url: string,
   results: RunResult[],
   elapsedMs: number,
-  renderOpts: RenderOptions = {},
+  renderOpts: RenderOptions = {}
 ): string {
-  const okResults = results.filter((r) => !r.error);
+  const okResults = results.filter((r) => !r.error && hasValidMetrics(r.metrics));
   const errors = results.length - okResults.length;
   const byPreset = new Map<string, RunResult[]>();
   for (const r of okResults) {
@@ -219,9 +186,7 @@ export function renderSwarmReport(
   for (const [presetName, rs] of byPreset) {
     const label = rs[0].preset.label;
     const stats = statsByMetric(rs);
-    sections.push(
-      presetTable(`${presetName}  ·  ${label}  ·  n=${rs.length}`, stats),
-    );
+    sections.push(presetTable(`${presetName}  ·  ${label}  ·  n=${rs.length}`, stats));
     const strip = distributionStrip(rs);
     if (strip) sections.push(strip);
   }
@@ -250,7 +215,13 @@ export function renderSwarmReport(
   for (const [presetName, rs] of byPreset) {
     const anyAudits = rs.some((r) => (r as { audits?: unknown[] }).audits?.length);
     if (!anyAudits) continue;
-    const diag = diagnosePreset(url, presetName, rs as never, rs[0].preset.label, rs[0].preset.formFactor);
+    const diag = diagnosePreset(
+      url,
+      presetName,
+      rs as never,
+      rs[0].preset.label,
+      rs[0].preset.formFactor
+    );
     sections.push(renderOpportunities(diag));
   }
 
@@ -267,8 +238,8 @@ export function renderSwarmReport(
         '    variance you cannot reproduce locally — use CrUX or a RUM tool for that.',
         '  • INP requires real user input and is not measured in navigation mode (row is hidden).',
         '  • Thresholds = Core Web Vitals "good"/"needs improvement"/"poor" bands.',
-      ].join('\n'),
-    ),
+      ].join('\n')
+    )
   );
 
   return sections.join('\n\n');
@@ -276,10 +247,16 @@ export function renderSwarmReport(
 
 function renderWeightedVerdict(
   byPreset: Map<string, RunResult[]>,
-  profile: { name: string; weights: Record<string, number> },
+  profile: { name: string; weights: Record<string, number> }
 ): string {
   // Compute per-preset p75 for the CWV metrics, weight them, render one summary line.
-  const metricSpecs: { key: keyof NonNullable<RunResult['metrics']>; label: string; unit: 'ms' | 'index'; good: number; poor: number }[] = [
+  const metricSpecs: {
+    key: keyof NonNullable<RunResult['metrics']>;
+    label: string;
+    unit: 'ms' | 'index';
+    good: number;
+    poor: number;
+  }[] = [
     { key: 'lcp', label: 'LCP', unit: 'ms', good: 2500, poor: 4000 },
     { key: 'cls', label: 'CLS', unit: 'index', good: 0.1, poor: 0.25 },
     { key: 'tbt', label: 'TBT', unit: 'ms', good: 200, poor: 600 },
@@ -301,7 +278,9 @@ function renderWeightedVerdict(
     for (const { preset, weight } of usedWeights) {
       const rs = byPreset.get(preset);
       if (!rs) continue;
-      const vals = rs.map((r) => r.metrics?.[m.key]).filter((v): v is number => typeof v === 'number');
+      const vals = rs
+        .map((r) => r.metrics?.[m.key])
+        .filter((v): v is number => typeof v === 'number');
       const stats = computeStats(vals);
       if (!stats) continue;
       weightedSum += stats.p75 * weight;
@@ -310,7 +289,12 @@ function renderWeightedVerdict(
     if (weightAccum === 0) continue;
     const wp75 = weightedSum / weightAccum;
     const color = wp75 <= m.good ? chalk.green : wp75 <= m.poor ? chalk.yellow : chalk.red;
-    const display = m.unit === 'ms' ? (wp75 >= 1000 ? `${(wp75 / 1000).toFixed(2)}s` : `${Math.round(wp75)}ms`) : wp75.toFixed(3);
+    const display =
+      m.unit === 'ms'
+        ? wp75 >= 1000
+          ? `${(wp75 / 1000).toFixed(2)}s`
+          : `${Math.round(wp75)}ms`
+        : wp75.toFixed(3);
     parts.push(`${chalk.dim(m.label)} ${color(display)}`);
   }
   const breakdown = usedWeights
@@ -327,7 +311,7 @@ function renderWeightedVerdict(
 
 function renderLabFieldGap(
   byPreset: Map<string, RunResult[]>,
-  cruxByFormFactor?: { mobile?: CruxRecord | null; desktop?: CruxRecord | null },
+  cruxByFormFactor?: { mobile?: CruxRecord | null; desktop?: CruxRecord | null }
 ): string {
   if (!cruxByFormFactor) return '';
   const factors: { factor: 'mobile' | 'desktop'; rec?: CruxRecord | null }[] = [
@@ -361,29 +345,36 @@ function renderLabFieldGap(
     } else {
       verdict = chalk.green('lab matches reality (within ±50%)');
     }
-    const lab = labStats.p75 >= 1000 ? `${(labStats.p75 / 1000).toFixed(2)}s` : `${Math.round(labStats.p75)}ms`;
-    const field = fieldLcp >= 1000 ? `${(fieldLcp / 1000).toFixed(2)}s` : `${Math.round(fieldLcp)}ms`;
+    const lab =
+      labStats.p75 >= 1000
+        ? `${(labStats.p75 / 1000).toFixed(2)}s`
+        : `${Math.round(labStats.p75)}ms`;
+    const field =
+      fieldLcp >= 1000 ? `${(fieldLcp / 1000).toFixed(2)}s` : `${Math.round(fieldLcp)}ms`;
     lines.push(
       chalk.dim(`  ${factor.padEnd(7)} LCP — lab `) +
         chalk.bold(lab) +
         chalk.dim(' vs field ') +
         chalk.bold(field) +
         chalk.dim('  →  ') +
-        verdict,
+        verdict
     );
   }
   if (lines.length === 0) return '';
   return chalk.cyan.bold('Lab vs field gap') + '\n' + lines.join('\n');
 }
 
-function renderCrux(
-  byFormFactor?: { mobile?: CruxRecord | null; desktop?: CruxRecord | null },
-): string {
+function renderCrux(byFormFactor?: {
+  mobile?: CruxRecord | null;
+  desktop?: CruxRecord | null;
+}): string {
   if (!byFormFactor) return '';
   const have = (byFormFactor.mobile ?? undefined) || (byFormFactor.desktop ?? undefined);
   if (!have) return '';
   const lines: string[] = [];
-  lines.push(chalk.cyan.bold('Real users (CrUX p75)') + chalk.dim('  · 28-day field data from Chrome'));
+  lines.push(
+    chalk.cyan.bold('Real users (CrUX p75)') + chalk.dim('  · 28-day field data from Chrome')
+  );
   const t = new Table({
     head: [
       chalk.bold('Form factor'),
@@ -395,9 +386,18 @@ function renderCrux(
     ],
     style: { head: [], border: ['gray'] },
   });
-  const formatMetric = (kind: 'ms' | 'index', spec: { good: number; poor: number }, v?: number): string => {
+  const formatMetric = (
+    kind: 'ms' | 'index',
+    spec: { good: number; poor: number },
+    v?: number
+  ): string => {
     if (v === undefined) return chalk.dim('—');
-    const val = kind === 'ms' ? (v >= 1000 ? `${(v / 1000).toFixed(2)}s` : `${Math.round(v)}ms`) : v.toFixed(3);
+    const val =
+      kind === 'ms'
+        ? v >= 1000
+          ? `${(v / 1000).toFixed(2)}s`
+          : `${Math.round(v)}ms`
+        : v.toFixed(3);
     const color = v <= spec.good ? chalk.green : v <= spec.poor ? chalk.yellow : chalk.red;
     return color(val);
   };
@@ -420,7 +420,10 @@ function renderCrux(
   lines.push(t.toString());
   // Pick whichever record has a collectionPeriod for the dim hint.
   const period = byFormFactor.mobile?.collectionPeriod ?? byFormFactor.desktop?.collectionPeriod;
-  const source = (byFormFactor.mobile ?? byFormFactor.desktop)?.source === 'url' ? 'URL-specific' : 'origin-aggregate';
+  const source =
+    (byFormFactor.mobile ?? byFormFactor.desktop)?.source === 'url'
+      ? 'URL-specific'
+      : 'origin-aggregate';
   if (period) {
     lines.push(chalk.dim(`  · ${source} · ${period}`));
   }
@@ -429,8 +432,7 @@ function renderCrux(
 
 function renderDomainRating(rec?: DomainRatingResult | null): string {
   if (!rec) return '';
-  const color =
-    rec.rating >= 40 ? chalk.green : rec.rating >= 10 ? chalk.yellow : chalk.dim;
+  const color = rec.rating >= 40 ? chalk.green : rec.rating >= 10 ? chalk.yellow : chalk.dim;
   return (
     chalk.cyan.bold('Domain authority (Ahrefs DR)') +
     chalk.dim('  · free public endpoint\n') +
@@ -443,13 +445,17 @@ function renderDomainRating(rec?: DomainRatingResult | null): string {
 
 function renderTraceInsights(insights: TraceInsightRecord[]): string {
   const lines: string[] = [];
-  lines.push(chalk.cyan.bold('Trace insight') + chalk.dim('  · derived diagnosis beside percentile history'));
+  lines.push(
+    chalk.cyan.bold('Trace insight') + chalk.dim('  · derived diagnosis beside percentile history')
+  );
   for (const i of insights) {
     lines.push(chalk.bold(`  ${i.preset}`) + chalk.dim(` (${i.adapter})`));
     lines.push(chalk.dim('    ') + i.summary);
     if (i.comparisonNotes) lines.push(chalk.yellow('    ' + i.comparisonNotes));
     if (i.opportunities.length > 0) {
-      lines.push(chalk.dim('    opportunities: ') + i.opportunities.slice(0, 3).join(chalk.dim(' · ')));
+      lines.push(
+        chalk.dim('    opportunities: ') + i.opportunities.slice(0, 3).join(chalk.dim(' · '))
+      );
     }
   }
   return lines.join('\n');
@@ -471,8 +477,14 @@ function renderOpportunities(d: Diagnosis): string {
   if (d.lcpPhases && d.lcpPhases.length > 0) {
     const phaseStr = d.lcpPhases
       .map((p) => {
-        const colorize = parseInt(p.percent, 10) >= 40 ? chalk.red : parseInt(p.percent, 10) >= 25 ? chalk.yellow : chalk.dim;
-        const ms = p.medianMs >= 1000 ? `${(p.medianMs / 1000).toFixed(1)}s` : `${Math.round(p.medianMs)}ms`;
+        const colorize =
+          parseInt(p.percent, 10) >= 40
+            ? chalk.red
+            : parseInt(p.percent, 10) >= 25
+              ? chalk.yellow
+              : chalk.dim;
+        const ms =
+          p.medianMs >= 1000 ? `${(p.medianMs / 1000).toFixed(1)}s` : `${Math.round(p.medianMs)}ms`;
         return colorize(`${p.phase} ${p.percent} (${ms})`);
       })
       .join(chalk.dim('  ·  '));
@@ -480,11 +492,18 @@ function renderOpportunities(d: Diagnosis): string {
   }
   const ops = rankOpportunities(d, 8);
   if (ops.length === 0) {
-    lines.push(chalk.dim('No actionable opportunities — Lighthouse marked all captured audits as passing.'));
+    lines.push(
+      chalk.dim('No actionable opportunities — Lighthouse marked all captured audits as passing.')
+    );
     return lines.join('\n');
   }
   const t = new Table({
-    head: [chalk.bold('Opportunity'), chalk.bold('Impact'), chalk.bold('Affects'), chalk.bold('Top item')],
+    head: [
+      chalk.bold('Opportunity'),
+      chalk.bold('Impact'),
+      chalk.bold('Affects'),
+      chalk.bold('Top item'),
+    ],
     style: { head: [], border: ['gray'] },
     colWidths: [38, 18, 14, 50],
     wordWrap: true,

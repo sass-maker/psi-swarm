@@ -4,11 +4,24 @@ import chalk from 'chalk';
 import ora from 'ora';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import { PRESETS, PRESET_GROUPS, TRAFFIC_PROFILES, resolvePresets, type Preset } from './presets.js';
+import {
+  PRESETS,
+  PRESET_GROUPS,
+  TRAFFIC_PROFILES,
+  resolvePresets,
+  type Preset,
+} from './presets.js';
 import { fetchCrux, type CruxRecord } from './crux.js';
-import { fetchDomainRating, type DomainRatingResult } from './ahrefs.js';
+import {
+  fetchDomainRating,
+  fetchAhrefsCrawlerIps,
+  fetchAhrefsCrawlerIpRanges,
+  fetchAhrefsTopDomains,
+  isAhrefsCrawlerIp,
+  type DomainRatingResult,
+} from './ahrefs.js';
 import { SwarmRunner, type RunResult, type RunResultWithArtifact } from './runner.js';
-import { HistoryDB } from './db.js';
+import { HistoryDB, type RunRow } from './db.js';
 import { renderSwarmReport } from './report.js';
 import { discover, rank, type DiscoveredLink } from './discover.js';
 import { profileMachine, resolveParallelism } from './machine.js';
@@ -31,7 +44,7 @@ const program = new Command();
 program
   .name('psi-swarm')
   .description(
-    'Run Lighthouse N times across realistic presets. Get p50/p75/p90/p99 of your Web Vitals instead of a single noisy number.',
+    'Run Lighthouse N times across realistic presets. Get p50/p75/p90/p99 of your Web Vitals instead of a single noisy number.'
   )
   .version('0.4.0');
 
@@ -43,7 +56,7 @@ program
   .option(
     '-p, --presets <spec>',
     'Preset group or comma list (realistic|mobile|desktop|psi|<names>)',
-    'psi',
+    'psi'
   )
   .option('-t, --tag <tag>', 'Tag this swarm in history (e.g. "before-deploy")')
   .option('--parallel <spec>', 'Preset-level parallelism (1|N|auto)', '1')
@@ -51,43 +64,31 @@ program
   .option('--no-suggest', 'Skip post-run link suggestions')
   .option('--no-diagnose', 'Skip the "Why?" Lighthouse-audit opportunities section')
   .option('--reason', 'Stream an LLM narrative explaining the numbers')
-  .option('--reason-backend <name>', 'openai | local-ai | auto (OpenAI-compatible endpoint, or local-ai CLI wrapper)', 'auto')
+  .option(
+    '--reason-backend <name>',
+    'openai | local-ai | auto (OpenAI-compatible endpoint, or local-ai CLI wrapper)',
+    'auto'
+  )
   .option('--reason-model <id>', 'Override the model id', 'auto')
-  .option('--profile <name>', 'Traffic profile for the weighted verdict (mobile-heavy|desktop-heavy|balanced|mobile-only)')
+  .option(
+    '--profile <name>',
+    'Traffic profile for the weighted verdict (mobile-heavy|desktop-heavy|balanced|mobile-only)'
+  )
   .option('--no-crux', 'Skip the CrUX real-user p75 lookup')
   .option('--no-ahrefs', 'Skip Ahrefs Domain Rating lookup (custom domains only)')
   .option('--output <fmt>', 'Also write a report file: html', undefined)
   .option('--no-insight', 'Skip trace-insight export and derived diagnosis')
   .option('--insight-baseline <tag>', 'Compare derived insight against a tagged baseline swarm')
   .action(async (url: string, opts) => {
-    let presets: Preset[];
-    try {
-      presets = resolvePresets(opts.presets);
-    } catch (err) {
-      console.error(chalk.red((err as Error).message));
-      process.exit(1);
-    }
-    const runs = parseInt(opts.runs, 10);
-    if (!Number.isInteger(runs) || runs < 1) {
-      console.error(chalk.red('--runs must be a positive integer'));
-      process.exit(1);
-    }
-    let parallel: number;
-    try {
-      parallel = resolveParallelism(opts.parallel, presets.length);
-    } catch (err) {
-      console.error(chalk.red((err as Error).message));
-      process.exit(1);
-    }
-
+    const { presets, runs, parallel } = resolveRunConfig(opts);
     if (parallel > 1) {
       const machine = profileMachine();
       console.log(
         chalk.dim(
           `Running ${parallel}× parallel across presets ` +
             `(${machine.cores} cores, ${machine.totalMemGB.toFixed(1)}GB RAM). ` +
-            `CPU-bound metrics (TBT, INP, Perf Score) may show slight noise vs serial.`,
-        ),
+            `CPU-bound metrics (TBT, INP, Perf Score) may show slight noise vs serial.`
+        )
       );
     }
 
@@ -112,91 +113,40 @@ program
       process.exit(1);
     }
 
-    let traceInsights;
-    if (opts.save !== false) {
-      const db = new HistoryDB();
-      for (const r of results) {
-        db.insert({
-          url,
-          preset: r.preset.name,
-          started_at: r.startedAt,
-          finished_at: r.finishedAt,
-          metrics: r.metrics,
-          error: r.error,
-          tag: opts.tag,
-        });
-      }
+    const traceInsights = await saveAndDeriveInsights(opts, url, results);
+    const cruxByFormFactor = await fetchCruxByFormFactor(url, opts);
+    const domainRating = await fetchDomainRatingData(url, opts);
+    const trafficProfile = resolveTrafficProfile(opts);
 
-      if (opts.insight !== false) {
-        const artifactPaths = exportSwarmArtifacts(url, results, { tag: opts.tag });
-        traceInsights = await deriveTraceInsights(db, url, results, {
-          tag: opts.tag,
-          artifactPaths,
-          baselineTag: opts.insightBaseline,
-        });
-      }
-      db.close();
-    } else if (opts.insight !== false) {
-      exportSwarmArtifacts(url, results, { tag: opts.tag });
-    }
+    console.log(
+      '\n' +
+        renderSwarmReport(url, results, elapsed, {
+          cruxByFormFactor,
+          trafficProfile,
+          domainRating,
+          traceInsights,
+        })
+    );
 
-    // Pre-render side-channel: fetch CrUX (mobile + desktop) in parallel.
-    let cruxByFormFactor: { mobile?: CruxRecord | null; desktop?: CruxRecord | null } | undefined;
-    if (opts.crux !== false && process.env.CRUX_API_KEY) {
-      try {
-        const [mobile, desktop] = await Promise.all([
-          fetchCrux(url, { formFactor: 'PHONE' }).catch(() => null),
-          fetchCrux(url, { formFactor: 'DESKTOP' }).catch(() => null),
-        ]);
-        if (mobile || desktop) cruxByFormFactor = { mobile, desktop };
-      } catch {
-        /* skip — report still renders without CrUX */
-      }
-    }
-    let domainRating: DomainRatingResult | null | undefined;
-    if (opts.ahrefs !== false) {
-      try {
-        const db = new HistoryDB();
-        domainRating = await fetchDomainRating(url, { db });
-        db.close();
-      } catch {
-        /* skip — report still renders without DR */
-      }
-    }
-    let trafficProfile: { name: string; weights: Record<string, number> } | undefined;
-    if (opts.profile) {
-      const weights = TRAFFIC_PROFILES[opts.profile];
-      if (!weights) {
-        console.error(chalk.red(`Unknown --profile: ${opts.profile}. Try: ${Object.keys(TRAFFIC_PROFILES).join(', ')}`));
-      } else {
-        trafficProfile = { name: opts.profile, weights };
-      }
-    }
-    console.log('\n' + renderSwarmReport(url, results, elapsed, { cruxByFormFactor, trafficProfile, domainRating, traceInsights }));
-
-    let reasoningCapture: { text: string; backend?: string; model?: string; durationMs?: number } | undefined;
+    let reasoningCapture:
+      | { text: string; backend?: string; model?: string; durationMs?: number }
+      | undefined;
     if (opts.reason === true) {
-      reasoningCapture = await runReasoning(url, results, opts.reasonModel ?? 'auto', opts.reasonBackend ?? 'auto');
+      reasoningCapture = await runReasoning(
+        url,
+        results,
+        opts.reasonModel ?? 'auto',
+        opts.reasonBackend ?? 'auto'
+      );
     }
 
     if (opts.output === 'html') {
-      const slug = url.replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').slice(0, 60);
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const defaultDir = pathResolve(homedir(), '.psi-swarm', 'reports');
-      const defaultPath = pathJoin(defaultDir, `psi-swarm-${slug}-${stamp}.html`);
-      const outPath = pathResolve(process.cwd(), opts.outputPath ?? defaultPath);
-      mkdirSync(pathResolve(outPath, '..'), { recursive: true });
-      const html = renderHtmlReport({
-        url,
-        results,
-        elapsedMs: elapsed,
+      writeHtmlReport(opts, url, results, elapsed, {
         cruxByFormFactor,
         domainRating,
         reasoning: reasoningCapture,
         traceInsights,
       });
-      writeFileSync(outPath, html, 'utf-8');
-      console.log('\n' + chalk.dim('Wrote HTML report → ') + chalk.cyan(outPath));
     } else if (opts.output && opts.output !== 'html') {
       console.error(chalk.red(`Unknown --output format: ${opts.output}. Try: html`));
     }
@@ -206,6 +156,149 @@ program
     }
   });
 
+function resolveRunConfig(opts: Record<string, unknown>): {
+  presets: Preset[];
+  runs: number;
+  parallel: number;
+} {
+  let presets: Preset[];
+  try {
+    presets = resolvePresets(opts.presets as string);
+  } catch (err) {
+    console.error(chalk.red((err as Error).message));
+    process.exit(1);
+  }
+  const runs = parseInt(opts.runs as string, 10);
+  if (!Number.isInteger(runs) || runs < 1) {
+    console.error(chalk.red('--runs must be a positive integer'));
+    process.exit(1);
+  }
+  let parallel: number;
+  try {
+    parallel = resolveParallelism(opts.parallel as string, presets.length);
+  } catch (err) {
+    console.error(chalk.red((err as Error).message));
+    process.exit(1);
+  }
+  return { presets, runs, parallel };
+}
+
+async function saveAndDeriveInsights(
+  opts: Record<string, unknown>,
+  url: string,
+  results: RunResultWithArtifact[]
+): Promise<Awaited<ReturnType<typeof deriveTraceInsights>> | undefined> {
+  if (opts.save !== false) {
+    const db = new HistoryDB();
+    for (const r of results) {
+      db.insert({
+        url,
+        preset: r.preset.name,
+        started_at: r.startedAt,
+        finished_at: r.finishedAt,
+        metrics: r.metrics,
+        error: r.error,
+        tag: opts.tag as string | undefined,
+      });
+    }
+    let traceInsights: Awaited<ReturnType<typeof deriveTraceInsights>> | undefined;
+    if (opts.insight !== false) {
+      const artifactPaths = exportSwarmArtifacts(url, results, {
+        tag: opts.tag as string | undefined,
+      });
+      traceInsights = await deriveTraceInsights(db, url, results, {
+        tag: opts.tag as string | undefined,
+        artifactPaths,
+        baselineTag: opts.insightBaseline as string | undefined,
+      });
+    }
+    db.close();
+    return traceInsights;
+  }
+  if (opts.insight !== false) {
+    exportSwarmArtifacts(url, results, { tag: opts.tag as string | undefined });
+  }
+  return undefined;
+}
+
+async function fetchCruxByFormFactor(
+  url: string,
+  opts: Record<string, unknown>
+): Promise<{ mobile?: CruxRecord | null; desktop?: CruxRecord | null } | undefined> {
+  if (opts.crux === false || !process.env.CRUX_API_KEY) return undefined;
+  try {
+    const [mobile, desktop] = await Promise.all([
+      fetchCrux(url, { formFactor: 'PHONE' }).catch(() => null),
+      fetchCrux(url, { formFactor: 'DESKTOP' }).catch(() => null),
+    ]);
+    if (mobile || desktop) return { mobile, desktop };
+  } catch {
+    /* skip — report still renders without CrUX */
+  }
+  return undefined;
+}
+
+async function fetchDomainRatingData(
+  url: string,
+  opts: Record<string, unknown>
+): Promise<DomainRatingResult | null | undefined> {
+  if (opts.ahrefs === false) return undefined;
+  try {
+    const db = new HistoryDB();
+    const rating = await fetchDomainRating(url, { db });
+    db.close();
+    return rating;
+  } catch {
+    /* skip — report still renders without DR */
+  }
+  return undefined;
+}
+
+function resolveTrafficProfile(
+  opts: Record<string, unknown>
+): { name: string; weights: Record<string, number> } | undefined {
+  if (!opts.profile) return undefined;
+  const weights = TRAFFIC_PROFILES[opts.profile as string];
+  if (!weights) {
+    console.error(
+      chalk.red(
+        `Unknown --profile: ${opts.profile}. Try: ${Object.keys(TRAFFIC_PROFILES).join(', ')}`
+      )
+    );
+    return undefined;
+  }
+  return { name: opts.profile as string, weights };
+}
+
+interface HtmlReportContext {
+  cruxByFormFactor?: { mobile?: CruxRecord | null; desktop?: CruxRecord | null };
+  domainRating?: DomainRatingResult | null;
+  reasoning?: { text: string; backend?: string; model?: string; durationMs?: number };
+  traceInsights?: Awaited<ReturnType<typeof deriveTraceInsights>>;
+}
+
+function writeHtmlReport(
+  opts: Record<string, unknown>,
+  url: string,
+  results: RunResultWithArtifact[],
+  elapsed: number,
+  ctx: HtmlReportContext
+): void {
+  const outPath = resolveHtmlReportPath(url, opts.outputPath as string | undefined);
+  mkdirSync(pathResolve(outPath, '..'), { recursive: true });
+  const html = renderHtmlReport({
+    url,
+    results,
+    elapsedMs: elapsed,
+    cruxByFormFactor: ctx.cruxByFormFactor,
+    domainRating: ctx.domainRating,
+    reasoning: ctx.reasoning,
+    traceInsights: ctx.traceInsights,
+  });
+  writeFileSync(outPath, html, 'utf-8');
+  console.log('\n' + chalk.dim('Wrote HTML report → ') + chalk.cyan(outPath));
+}
+
 async function resolveBackend(spec: string): Promise<ReasonBackend> {
   if (spec === 'openai' || spec === 'local-ai') return spec;
   // auto: prefer local-ai if reachable.
@@ -213,11 +306,40 @@ async function resolveBackend(spec: string): Promise<ReasonBackend> {
   return local ? 'local-ai' : 'openai';
 }
 
+const METRIC_KEYS = ['lcp', 'cls', 'inp', 'tbt', 'fcp', 'ttfb', 'si', 'performance_score'] as const;
+
+function rowToRunResult(r: RunRow): RunResult {
+  const fallback = {
+    label: r.preset,
+    formFactor: 'mobile' as const,
+    throttling: {} as any,
+    screenEmulation: {} as any,
+  };
+  const p = PRESETS[r.preset] ?? fallback;
+  const metrics: Record<string, number | undefined> = {};
+  for (const key of METRIC_KEYS) {
+    metrics[key] = r[key] ?? undefined;
+  }
+  return {
+    preset: {
+      name: r.preset,
+      label: p.label,
+      formFactor: p.formFactor,
+      throttling: p.throttling,
+      screenEmulation: p.screenEmulation,
+    },
+    startedAt: r.started_at,
+    finishedAt: r.finished_at ?? r.started_at,
+    metrics,
+    error: r.error ?? undefined,
+  };
+}
+
 async function runReasoning(
   url: string,
   results: RunResultWithArtifact[],
   model: string,
-  backendSpec: string,
+  backendSpec: string
 ): Promise<{ text: string; backend: string; model?: string; durationMs?: number } | undefined> {
   const byPreset = new Map<string, RunResultWithArtifact[]>();
   for (const r of results) {
@@ -232,7 +354,9 @@ async function runReasoning(
     diagnoses.push(diagnosePreset(url, name, rs, rs[0].preset.label, rs[0].preset.formFactor));
   }
   const backend = await resolveBackend(backendSpec);
-  console.log('\n' + chalk.cyan.bold('Reasoning') + chalk.dim(`  · backend=${backend} · model=${model}`));
+  console.log(
+    '\n' + chalk.cyan.bold('Reasoning') + chalk.dim(`  · backend=${backend} · model=${model}`)
+  );
   process.stdout.write(chalk.dim('  '));
   let acc = '';
   try {
@@ -245,7 +369,8 @@ async function runReasoning(
       },
     });
     process.stdout.write('\n');
-    const modelLabel = result.modelUsed && result.modelUsed !== model ? `routed to ${result.modelUsed} · ` : '';
+    const modelLabel =
+      result.modelUsed && result.modelUsed !== model ? `routed to ${result.modelUsed} · ` : '';
     console.log(chalk.dim(`  · ${modelLabel}${(result.durationMs / 1000).toFixed(1)}s`));
     return { text: acc.trim(), backend, model: result.modelUsed, durationMs: result.durationMs };
   } catch (err) {
@@ -290,8 +415,8 @@ async function renderSuggestions(url: string, results: RunResultWithArtifact[]):
         '\n' +
           chalk.dim(
             'No additional pages found (static HTML, sitemap.xml, framework routes ' +
-              'all empty). Likely an auth-gated SPA — pass specific URLs to test more pages.',
-          ),
+              'all empty). Likely an auth-gated SPA — pass specific URLs to test more pages.'
+          )
       );
       return;
     }
@@ -299,7 +424,7 @@ async function renderSuggestions(url: string, results: RunResultWithArtifact[]):
     console.log(
       '\n' +
         chalk.cyan.bold('Other pages on this site you may want to test:') +
-        chalk.dim(`  (sources: ${sources.join(', ')})`),
+        chalk.dim(`  (sources: ${sources.join(', ')})`)
     );
     const t = new Table({
       head: [chalk.bold('Path'), chalk.bold('Link text')],
@@ -312,9 +437,7 @@ async function renderSuggestions(url: string, results: RunResultWithArtifact[]):
     }
     console.log(t.toString());
     console.log(
-      chalk.dim(
-        `  Re-run with any of these URLs:  psi-swarm run ${chalk.bold('<url>')}`,
-      ),
+      chalk.dim(`  Re-run with any of these URLs:  psi-swarm run ${chalk.bold('<url>')}`)
     );
   } catch (err) {
     console.log(chalk.dim(`\n(Link discovery skipped: ${(err as Error).message})`));
@@ -332,19 +455,10 @@ program
       const { links, source } = await discover(url, {
         maxLinks: parseInt(opts.max, 10),
       });
-      const tag =
-        source === 'sitemap'
-          ? ' via sitemap.xml'
-          : source === 'html'
-          ? ' from HTML'
-          : '';
+      const tag = source === 'sitemap' ? ' via sitemap.xml' : source === 'html' ? ' from HTML' : '';
       spinner.succeed(`Found ${links.length} same-origin links${tag}`);
       if (links.length === 0) {
-        console.log(
-          chalk.dim(
-            'No links found in static HTML or /sitemap.xml — likely a SPA.',
-          ),
-        );
+        console.log(chalk.dim('No links found in static HTML or /sitemap.xml — likely a SPA.'));
         return;
       }
       const t = new Table({
@@ -367,11 +481,7 @@ program
   .description('List available presets and groups')
   .action(() => {
     const t = new Table({
-      head: [
-        chalk.bold('Name'),
-        chalk.bold('Form factor'),
-        chalk.bold('Description'),
-      ],
+      head: [chalk.bold('Name'), chalk.bold('Form factor'), chalk.bold('Description')],
       style: { head: [], border: ['gray'] },
     });
     for (const p of Object.values(PRESETS)) {
@@ -413,38 +523,13 @@ program
   .option('-n, --limit <n>', 'Max rows', '500')
   .action((url: string, opts) => {
     const db = new HistoryDB();
-    const rows = db.recentRuns(
-      url,
-      opts.preset,
-      parseInt(opts.limit, 10),
-    );
+    const rows = db.recentRuns(url, opts.preset, parseInt(opts.limit, 10));
     if (rows.length === 0) {
       console.log(chalk.dim('No history for this URL yet.'));
       db.close();
       return;
     }
-    const fakeResults: RunResult[] = rows.map((r) => ({
-      preset: {
-        name: r.preset,
-        label: PRESETS[r.preset]?.label ?? r.preset,
-        formFactor: PRESETS[r.preset]?.formFactor ?? 'mobile',
-        throttling: PRESETS[r.preset]?.throttling ?? ({} as any),
-        screenEmulation: PRESETS[r.preset]?.screenEmulation ?? ({} as any),
-      },
-      startedAt: r.started_at,
-      finishedAt: r.finished_at ?? r.started_at,
-      metrics: {
-        lcp: r.lcp ?? undefined,
-        cls: r.cls ?? undefined,
-        inp: r.inp ?? undefined,
-        tbt: r.tbt ?? undefined,
-        fcp: r.fcp ?? undefined,
-        ttfb: r.ttfb ?? undefined,
-        si: r.si ?? undefined,
-        performance_score: r.performance_score ?? undefined,
-      },
-      error: r.error ?? undefined,
-    }));
+    const fakeResults: RunResult[] = rows.map(rowToRunResult);
     console.log(renderSwarmReport(url, fakeResults, 0));
     db.close();
   });
@@ -464,8 +549,8 @@ program
     if (base.length === 0 || cand.length === 0) {
       console.log(
         chalk.red(
-          `Missing runs. baseline=${opts.baseline} (n=${base.length})  candidate=${opts.candidate} (n=${cand.length})`,
-        ),
+          `Missing runs. baseline=${opts.baseline} (n=${base.length})  candidate=${opts.candidate} (n=${cand.length})`
+        )
       );
       process.exit(1);
     }
@@ -476,7 +561,12 @@ program
     }
     const pctNum = parseInt(pctKey.slice(1), 10);
 
-    const metrics: { key: keyof typeof base[number]; label: string; unit: 'ms' | 'index' | 'score'; higherIsBetter?: boolean }[] = [
+    const metrics: {
+      key: keyof (typeof base)[number];
+      label: string;
+      unit: 'ms' | 'index' | 'score';
+      higherIsBetter?: boolean;
+    }[] = [
       { key: 'performance_score', label: 'Perf Score', unit: 'score', higherIsBetter: true },
       { key: 'lcp', label: 'LCP', unit: 'ms' },
       { key: 'cls', label: 'CLS', unit: 'index' },
@@ -542,8 +632,8 @@ program
         `Comparison for ${chalk.bold(url)}\n` +
           `baseline=${opts.baseline} (n=${base.length})  vs  candidate=${opts.candidate} (n=${cand.length})\n` +
           `percentile = ${pctKey}`,
-        { padding: 1, borderColor: 'cyan', borderStyle: 'round' },
-      ),
+        { padding: 1, borderColor: 'cyan', borderStyle: 'round' }
+      )
     );
     console.log(t.toString());
   });
@@ -570,7 +660,9 @@ program
     try {
       await server.listen();
     } catch (err) {
-      console.error(chalk.red(`Failed to listen on ${opts.host}:${port}: ${(err as Error).message}`));
+      console.error(
+        chalk.red(`Failed to listen on ${opts.host}:${port}: ${(err as Error).message}`)
+      );
       process.exit(1);
     }
     const url = `http://${opts.host}:${port}`;
@@ -582,8 +674,8 @@ program
           (opts.token ? `${chalk.dim('Token:  ')}${chalk.yellow(opts.token)}\n` : '') +
           `\n${chalk.dim('Open the web UI and it will auto-connect. Ctrl-C to stop.')}\n` +
           `${chalk.dim('Ahrefs DR refreshes weekly when idle (no active swarms).')}`,
-        { padding: 1, borderColor: 'cyan', borderStyle: 'round' },
-      ),
+        { padding: 1, borderColor: 'cyan', borderStyle: 'round' }
+      )
     );
     const shutdown = async () => {
       console.log(chalk.dim('\nShutting down...'));
@@ -617,7 +709,9 @@ program
     try {
       await server.listen();
     } catch (err) {
-      console.error(chalk.red(`Failed to listen on ${opts.host}:${port}: ${(err as Error).message}`));
+      console.error(
+        chalk.red(`Failed to listen on ${opts.host}:${port}: ${(err as Error).message}`)
+      );
       process.exit(1);
     }
     const agentUrl = `http://${opts.host}:${port}`;
@@ -628,11 +722,12 @@ program
           `${chalk.dim('Agent:  ')}${agentUrl}\n` +
           `${chalk.dim('Web UI: ')}${webUrl}\n` +
           `\n${chalk.dim('Opening your browser… Ctrl-C to stop.')}`,
-        { padding: 1, borderColor: 'cyan', borderStyle: 'round' },
-      ),
+        { padding: 1, borderColor: 'cyan', borderStyle: 'round' }
+      )
     );
     if (opts.open) {
-      const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start ""' : 'xdg-open';
+      const cmd =
+        platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start ""' : 'xdg-open';
       try {
         exec(`${cmd} "${webUrl}"`);
       } catch {
@@ -669,52 +764,120 @@ program
     console.log(t.toString());
   });
 
+const ahrefsCommand = program
+  .command('ahrefs')
+  .description(
+    'Ahrefs public-API helpers (crawler IPs, top domains) beyond the per-run Domain Rating lookup'
+  );
+
+ahrefsCommand
+  .command('crawlers')
+  .description("Fetch Ahrefs' published AhrefsBot IPs/ranges, or check an IP against them")
+  .option('--refresh', 'Bypass the 24h cache and refetch from Ahrefs')
+  .option('--check <ip>', 'Check whether an IP address matches a known AhrefsBot IP/range')
+  .action(async (opts) => {
+    const db = new HistoryDB();
+    try {
+      const spinner = ora('Fetching Ahrefs crawler IPs...').start();
+      const [ips, ranges] = await Promise.all([
+        fetchAhrefsCrawlerIps({ force: opts.refresh, db }),
+        fetchAhrefsCrawlerIpRanges({ force: opts.refresh, db }),
+      ]);
+      spinner.succeed(`${ips.length} IPs, ${ranges.length} ranges`);
+
+      if (opts.check) {
+        const match = isAhrefsCrawlerIp(opts.check, ips, ranges);
+        console.log(
+          match
+            ? chalk.green(`${opts.check} matches a published AhrefsBot IP/range.`)
+            : chalk.red(`${opts.check} does NOT match any published AhrefsBot IP/range.`)
+        );
+        return;
+      }
+
+      const t = new Table({
+        head: [chalk.bold('Type'), chalk.bold('Value')],
+        style: { head: [], border: ['gray'] },
+      });
+      for (const ip of ips) t.push(['IP', ip]);
+      for (const range of ranges) t.push(['Range', range]);
+      console.log(t.toString());
+    } catch (err) {
+      console.error(chalk.red(`Failed to fetch Ahrefs crawler list: ${(err as Error).message}`));
+      process.exitCode = 1;
+    } finally {
+      db.close();
+    }
+  });
+
+ahrefsCommand
+  .command('top-domains')
+  .description(
+    'List a slice of Ahrefs\u2019 top-1M-domains-by-Domain-Rating leaderboard (needs AHREFS_API_KEY)'
+  )
+  .option('--from <n>', 'Rank position to start from', '1')
+  .option('--to <n>', 'Rank position to end at (max 250k per request)', '20')
+  .action(async (opts) => {
+    try {
+      const spinner = ora('Fetching Ahrefs top domains...').start();
+      const rows = await fetchAhrefsTopDomains({ from: Number(opts.from), to: Number(opts.to) });
+      spinner.succeed(`${rows.length} domains`);
+      const t = new Table({
+        head: [chalk.bold('Rank'), chalk.bold('Domain'), chalk.bold('DR')],
+        style: { head: [], border: ['gray'] },
+      });
+      for (const row of rows) t.push([String(row.rank), row.domain, row.domainRating.toFixed(1)]);
+      console.log(t.toString());
+    } catch (err) {
+      console.error(chalk.red(`Failed to fetch Ahrefs top domains: ${(err as Error).message}`));
+      process.exitCode = 1;
+    }
+  });
+
 program
   .command('watch')
   .description('Manage the local regression watchlist')
   .addCommand(
-    new Command('list')
-      .description('Show watched URLs and the current queue')
-      .action(() => {
-        const db = new HistoryDB();
-        const entries = db.listWatchlist();
-        const queue = evaluateWatchlist(db);
-        db.close();
-        if (entries.length === 0) {
-          console.log(chalk.dim('Watchlist is empty. Add a URL with: psi-swarm watch add <url>'));
-          return;
-        }
-        const summary = summarizeWatchlist(queue);
-        console.log(
-          boxen(
-            `${chalk.bold('Watchlist queue')}\n` +
-              `${summary.regressed} regressed · ${summary.improved} improved · ${summary.stale} stale · ${summary.missing} missing · ${summary.stable} stable`,
-            { padding: 1, borderColor: 'cyan', borderStyle: 'round' },
-          ),
-        );
-        const t = new Table({
-          head: [chalk.bold('Status'), chalk.bold('URL'), chalk.bold('Preset'), chalk.bold('Delta')],
-          style: { head: [], border: ['gray'] },
-          wordWrap: true,
-        });
-        for (const item of queue) {
-          const statusColor =
-            item.status === 'regressed'
-              ? chalk.red
-              : item.status === 'improved'
-                ? chalk.green
-                : item.status === 'stale' || item.status === 'missing'
-                  ? chalk.yellow
-                  : chalk.dim;
-          t.push([
-            statusColor(item.status),
-            item.label ? `${item.label}\n${chalk.dim(item.url)}` : item.url,
-            item.preset,
-            item.message,
-          ]);
-        }
-        console.log(t.toString());
-      }),
+    new Command('list').description('Show watched URLs and the current queue').action(() => {
+      const db = new HistoryDB();
+      const entries = db.listWatchlist();
+      const queue = evaluateWatchlist(db);
+      db.close();
+      if (entries.length === 0) {
+        console.log(chalk.dim('Watchlist is empty. Add a URL with: psi-swarm watch add <url>'));
+        return;
+      }
+      const summary = summarizeWatchlist(queue);
+      console.log(
+        boxen(
+          `${chalk.bold('Watchlist queue')}\n` +
+            `${summary.regressed} regressed · ${summary.improved} improved · ${summary.stale} stale · ${summary.missing} missing · ${summary.stable} stable`,
+          { padding: 1, borderColor: 'cyan', borderStyle: 'round' }
+        )
+      );
+      const t = new Table({
+        head: [chalk.bold('Status'), chalk.bold('URL'), chalk.bold('Preset'), chalk.bold('Delta')],
+        style: { head: [], border: ['gray'] },
+        wordWrap: true,
+      });
+      for (const item of queue) {
+        const statusColor =
+          item.status === 'regressed'
+            ? chalk.red
+            : item.status === 'improved'
+              ? chalk.green
+              : item.status === 'stale' || item.status === 'missing'
+                ? chalk.yellow
+                : chalk.dim;
+        t.push([
+          statusColor(item.status),
+          item.label ? `${item.label}\n${chalk.dim(item.url)}` : item.url,
+          item.preset,
+          item.message,
+        ]);
+      }
+      console.log(t.toString());
+    })
   )
   .addCommand(
     new Command('add')
@@ -739,7 +902,7 @@ program
         });
         db.close();
         console.log(chalk.green(`Watching ${url}`) + chalk.dim(` · preset=${opts.preset}`));
-      }),
+      })
   )
   .addCommand(
     new Command('remove')
@@ -754,36 +917,48 @@ program
           return;
         }
         console.log(chalk.green(`Removed ${url} from watchlist`));
-      }),
+      })
   )
   .addCommand(
-    new Command('check')
-      .description('Refresh and print the watchlist queue')
-      .action(() => {
-        const db = new HistoryDB();
-        db.setMeta('watchlist_refreshed_at', String(Date.now()));
-        const queue = evaluateWatchlist(db);
-        db.close();
-        const summary = summarizeWatchlist(queue);
-        console.log(
-          chalk.cyan.bold('Watchlist check') +
-            chalk.dim(` · ${summary.regressed} regressed · ${summary.improved} improved · ${summary.stale} stale`),
-        );
-        for (const item of queue) {
-          const color =
-            item.status === 'regressed'
-              ? chalk.red
-              : item.status === 'improved'
-                ? chalk.green
-                : item.status === 'stale' || item.status === 'missing'
-                  ? chalk.yellow
-                  : chalk.dim;
-          console.log(color(`  ${item.status.padEnd(9)} ${item.url}  ${item.message}`));
-        }
-      }),
+    new Command('check').description('Refresh and print the watchlist queue').action(() => {
+      const db = new HistoryDB();
+      db.setMeta('watchlist_refreshed_at', String(Date.now()));
+      const queue = evaluateWatchlist(db);
+      db.close();
+      const summary = summarizeWatchlist(queue);
+      console.log(
+        chalk.cyan.bold('Watchlist check') +
+          chalk.dim(
+            ` · ${summary.regressed} regressed · ${summary.improved} improved · ${summary.stale} stale`
+          )
+      );
+      for (const item of queue) {
+        const color =
+          item.status === 'regressed'
+            ? chalk.red
+            : item.status === 'improved'
+              ? chalk.green
+              : item.status === 'stale' || item.status === 'missing'
+                ? chalk.yellow
+                : chalk.dim;
+        console.log(color(`  ${item.status.padEnd(9)} ${item.url}  ${item.message}`));
+      }
+    })
   );
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(chalk.red(err.message));
   process.exit(1);
 });
+
+function resolveHtmlReportPath(url: string, outputPath?: string): string {
+  const slug = url
+    .replace(/^https?:\/\//, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 60);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const defaultDir = pathResolve(homedir(), '.psi-swarm', 'reports');
+  const defaultPath = pathJoin(defaultDir, `psi-swarm-${slug}-${stamp}.html`);
+  return pathResolve(process.cwd(), outputPath ?? defaultPath);
+}

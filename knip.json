@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["blume.config.ts", "scripts/**/*.mjs"],
+      "project": ["scripts/**/*.mjs"],
+      "ignoreDependencies": [
+        "@astrojs/mdx",
+        "@astrojs/react",
+        "@shikijs/twoslash",
+        "@tailwindcss/vite",
+        "jscpd",
+        "react",
+        "react-dom"
+      ]
+    },
+    "cli": {
+      "entry": ["src/cli.ts"],
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,mjs}"]
+    },
+    "web": {
+      "entry": ["astro.config.mjs"],
+      "project": ["src/**/*.{ts,tsx,astro}"],
+      "ignoreDependencies": ["tailwindcss", "wrangler"]
+    }
+  }
+}

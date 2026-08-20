@@ -1,12 +1,6 @@
 # psi-swarm
 
-> [!IMPORTANT]
-> This public repository is preserved for history and attribution. The
-> maintained implementation is
-> [`foundry/tools/psi-swarm`](https://github.com/sass-maker/fleet-workspace/tree/main/foundry/tools/psi-swarm)
-> in the private Fleet Workspace. It is created and maintained by
-> [Sarthak Agrawal](https://sarthakagrawal.dev). Current product context:
-> [SaaS Maker](https://sassmaker.com/p/psi-swarm).
+**Canonical source:** [`sass-maker/psi-swarm`](https://github.com/sass-maker/psi-swarm).
 
 > Lighthouse, run many times across realistic device/network presets. See the **p50 / p75 / p90 / p99** of your Web Vitals, not one noisy point.
 
@@ -48,7 +42,7 @@ psi-swarm/
 ## Quick start (3 commands)
 
 ```bash
-git clone https://github.com/sarthak-fleet/psi-swarm.git
+gh repo clone sass-maker/psi-swarm
 cd psi-swarm
 pnpm run setup                                                # installs + builds CLI
 pnpm run cli -- run https://example.com --runs 5 --parallel auto
@@ -56,11 +50,27 @@ pnpm run cli -- run https://example.com --runs 5 --parallel auto
 
 That's it. Beautiful Ink-driven progress UI in the terminal, percentile tables, LCP element identification, and ranked Lighthouse opportunities.
 
-> **Node version**: use Node 22 LTS. Lighthouse 12 has a known incompatibility with Node 24 (an internal `performance.measure` trace mark). The `engines` field gates this.
+> **Node version**: use Node 22.19+. Lighthouse 13 requires Node >=22.19 and supports Node 24. The `engines` field gates this.
 
 ### Web UI flavour
 
-Same CLI, but driven from a browser:
+The deployed controller at <https://performance.sassmaker.com> guides first-time
+users through the public local-agent setup. It requires Node 22 LTS, Git, and
+Chrome, then uses the compatible public v0.4.0 source:
+
+```bash
+git clone --depth 1 https://github.com/sass-maker/psi-swarm.git
+cd psi-swarm
+corepack pnpm install --frozen-lockfile
+corepack pnpm run build:cli
+corepack pnpm run cli serve --origin https://performance.sassmaker.com
+```
+
+Keep that terminal open, return to the controller, and select **Connect to local
+agent**. The controller derives `--origin` from the current page, so preview and
+local controller URLs receive their own correct command.
+
+Fleet contributors can instead run the current source and local web app:
 
 ```bash
 pnpm run serve                  # in one terminal: starts the local agent
@@ -69,6 +79,14 @@ pnpm run web                    # in another terminal: starts the Astro dev serv
 ```
 
 The browser auto-detects the local agent. **Compute always happens on your machine** — the page is just the controller.
+
+The run dashboard offers three evidence levels:
+
+- **Quick check** — two serial desktop audits for a directional result in about a minute.
+- **Full swarm** — five serial mobile and desktop audits for reliable percentiles.
+- **Custom swarm** — expand the advanced controls to choose runs, presets, parallelism, and a comparison tag.
+
+Quick checks are labeled directional and finish with a **Confirm with full swarm** action. They are an activation path, not a replacement for distributional evidence.
 
 ### Reasoning about *why* your numbers are what they are
 
