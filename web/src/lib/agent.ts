@@ -111,6 +111,13 @@ export interface AgentConnection {
  * A successful connection is remembered in localStorage so the next visit
  * reconnects automatically with a single request.
  */
+function resolveProbeTarget(
+  preferred: string | undefined,
+  remembered: string | undefined
+): string | undefined {
+  return preferred ?? remembered;
+}
+
 export async function connectToAgent(
   mode: 'auto' | 'explicit' = 'auto'
 ): Promise<AgentConnection | null> {
@@ -120,14 +127,14 @@ export async function connectToAgent(
   const token = params.get('token') ?? undefined;
   const remembered = rememberedAgentUrl() ?? undefined;
 
+  const target = resolveProbeTarget(preferred, remembered);
   let probe: { url: string; health: HealthResponse } | null;
   if (mode === 'auto') {
-    const target = preferred ?? remembered;
     if (!target) return null; // no intent, no memory → stay quiet
     probe = await probeAgent([target], { token });
     if (!probe && !preferred) forgetAgentUrl();
   } else {
-    probe = await probeAgent(undefined, { preferredUrl: preferred ?? remembered, token });
+    probe = await probeAgent(undefined, { preferredUrl: target, token });
   }
   if (!probe) return null;
   rememberAgentUrl(probe.url);

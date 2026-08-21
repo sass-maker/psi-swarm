@@ -151,6 +151,16 @@ function groupByPreset(results: RunResultWithArtifact[]): Map<string, RunResultW
   return byPreset;
 }
 
+const METRIC_KEYS = ['lcp', 'cls', 'inp', 'tbt', 'fcp', 'ttfb', 'si', 'performance_score'] as const;
+
+function metricsFromRow(row: RunRow): import('./runner.js').MetricSet {
+  const metrics: Record<string, number | undefined> = {};
+  for (const key of METRIC_KEYS) {
+    metrics[key] = row[key] ?? undefined;
+  }
+  return metrics as import('./runner.js').MetricSet;
+}
+
 function rowToRunResult(row: RunRow): RunResultWithArtifact {
   return {
     preset: {
@@ -162,16 +172,7 @@ function rowToRunResult(row: RunRow): RunResultWithArtifact {
     },
     startedAt: row.started_at,
     finishedAt: row.finished_at ?? row.started_at,
-    metrics: {
-      lcp: row.lcp ?? undefined,
-      cls: row.cls ?? undefined,
-      inp: row.inp ?? undefined,
-      tbt: row.tbt ?? undefined,
-      fcp: row.fcp ?? undefined,
-      ttfb: row.ttfb ?? undefined,
-      si: row.si ?? undefined,
-      performance_score: row.performance_score ?? undefined,
-    },
+    metrics: metricsFromRow(row),
   };
 }
 

@@ -185,18 +185,19 @@ async function* sseDataLines(res: Response): AsyncGenerator<string> {
   }
 }
 
-async function streamOpenAi(
-  userMessage: string,
-  opts: ReasonOptions,
-  startedAt: number
-): Promise<ReasonResult> {
+function resolveOpenAiConfig(opts: ReasonOptions): {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  extraBody: Record<string, unknown>;
+  extraHeaders: Record<string, string>;
+} {
   const apiKey = opts.apiKey ?? process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error(
       'Missing OPENAI_API_KEY env var. Set it to a key from any OpenAI-compatible provider (OpenAI, OpenRouter, Groq, your own gateway). Or use --reason-backend local-ai.'
     );
   }
-  // Base URL convention: include /v1, e.g. https://api.openai.com/v1
   const baseUrl = (opts.baseUrl ?? process.env.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE).replace(
     /\/$/,
     ''
@@ -208,8 +209,15 @@ async function streamOpenAi(
     ...parseExtraJson(process.env.OPENAI_EXTRA_HEADERS),
     ...(opts.extraHeaders ?? {}),
   } as Record<string, string>;
+  return { apiKey, baseUrl, model, extraBody, extraHeaders };
+}
 
-  const body = JSON.stringify({
+function buildOpenAiBody(
+  model: string,
+  userMessage: string,
+  extraBody: Record<string, unknown>
+): string {
+  return JSON.stringify({
     model,
     stream: true,
     messages: [
@@ -218,6 +226,38 @@ async function streamOpenAi(
     ],
     ...extraBody,
   });
+}
+
+async function consumeOpenAiStream(
+  res: Response,
+  opts: ReasonOptions,
+  startedAt: number
+): Promise<ReasonResult> {
+  let acc = '';
+  let modelUsed: string | undefined;
+  for await (const data of sseDataLines(res)) {
+    try {
+      const parsed = JSON.parse(data);
+      modelUsed = parsed.model ?? modelUsed;
+      const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+      if (delta) {
+        acc += delta;
+        opts.onChunk?.(delta);
+      }
+    } catch {
+      /* skip malformed chunk */
+    }
+  }
+  return { text: acc.trim(), modelUsed, durationMs: Date.now() - startedAt };
+}
+
+async function streamOpenAi(
+  userMessage: string,
+  opts: ReasonOptions,
+  startedAt: number
+): Promise<ReasonResult> {
+  const { apiKey, baseUrl, model, extraBody, extraHeaders } = resolveOpenAiConfig(opts);
+  const body = buildOpenAiBody(model, userMessage, extraBody);
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -236,23 +276,7 @@ async function streamOpenAi(
   }
   if (!res.body) throw new Error('endpoint returned no body');
 
-  let acc = '';
-  let modelUsed: string | undefined;
-  for await (const data of sseDataLines(res)) {
-    try {
-      const parsed = JSON.parse(data);
-      modelUsed = parsed.model ?? modelUsed;
-      const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
-      if (delta) {
-        acc += delta;
-        opts.onChunk?.(delta);
-      }
-    } catch {
-      /* skip malformed chunk */
-    }
-  }
-
-  return { text: acc.trim(), modelUsed, durationMs: Date.now() - startedAt };
+  return consumeOpenAiStream(res, opts, startedAt);
 }
 
 async function streamLocalAi(

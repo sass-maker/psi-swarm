@@ -77,6 +77,38 @@ export interface SwarmOptions {
   captureAudits?: boolean;
 }
 
+function extractMetrics(
+  audits: Parameters<typeof captureAuditsFromLhr>[0],
+  lhr: { categories: { performance?: { score?: number } } }
+): MetricSet {
+  const numeric = (id: string): number | undefined => {
+    const a = audits[id];
+    return typeof a?.numericValue === 'number' ? a.numericValue : undefined;
+  };
+  return {
+    lcp: numeric('largest-contentful-paint'),
+    cls: numeric('cumulative-layout-shift'),
+    inp: numeric('interaction-to-next-paint') ?? numeric('experimental-interaction-to-next-paint'),
+    tbt: numeric('total-blocking-time'),
+    fcp: numeric('first-contentful-paint'),
+    ttfb: numeric('server-response-time'),
+    si: numeric('speed-index'),
+    performance_score:
+      typeof lhr.categories.performance?.score === 'number'
+        ? lhr.categories.performance.score * 100
+        : undefined,
+  };
+}
+
+function extractScripts(result: unknown): ScriptArtifact[] | undefined {
+  const artifacts = (result as { artifacts?: { Scripts?: { url?: string; content?: string }[] } })
+    .artifacts;
+  if (!Array.isArray(artifacts?.Scripts)) return undefined;
+  return artifacts.Scripts.filter(
+    (s) => typeof s.content === 'string' && typeof s.url === 'string'
+  ).map((s) => ({ url: s.url!, content: s.content! }));
+}
+
 export class SwarmRunner extends EventEmitter {
   private cancelled = false;
   private activeChromes = new Set<LaunchedChrome>();
@@ -142,24 +174,7 @@ export class SwarmRunner extends EventEmitter {
         );
       }
       const audits = lhr.audits;
-      const numeric = (id: string): number | undefined => {
-        const a = audits[id];
-        return typeof a?.numericValue === 'number' ? a.numericValue : undefined;
-      };
-      const metrics: MetricSet = {
-        lcp: numeric('largest-contentful-paint'),
-        cls: numeric('cumulative-layout-shift'),
-        inp:
-          numeric('interaction-to-next-paint') ?? numeric('experimental-interaction-to-next-paint'),
-        tbt: numeric('total-blocking-time'),
-        fcp: numeric('first-contentful-paint'),
-        ttfb: numeric('server-response-time'),
-        si: numeric('speed-index'),
-        performance_score:
-          typeof lhr.categories.performance?.score === 'number'
-            ? lhr.categories.performance.score * 100
-            : undefined,
-      };
+      const metrics = extractMetrics(audits as Parameters<typeof captureAuditsFromLhr>[0], lhr);
       // Reject non-page and empty measurements: a Lighthouse run that completes
       // without error but yields no performance metrics (e.g. a Cloudflare Access
       // 401 page, a redirect to an auth wall, or a blank/error document) is not a
@@ -180,16 +195,7 @@ export class SwarmRunner extends EventEmitter {
       if (opts.captureScripts) {
         // Lighthouse Scripts artifact contains the bundled JS source for every script
         // on the page. Perfect for framework route detection — works even on auth-gated SPAs.
-        const artifacts = (
-          result as unknown as {
-            artifacts?: { Scripts?: { url?: string; content?: string }[] };
-          }
-        ).artifacts;
-        if (Array.isArray(artifacts?.Scripts)) {
-          out.scripts = artifacts.Scripts.filter(
-            (s) => typeof s.content === 'string' && typeof s.url === 'string'
-          ).map((s) => ({ url: s.url!, content: s.content! }));
-        }
+        out.scripts = extractScripts(result);
       }
       if (opts.captureAudits) {
         out.audits = captureAuditsFromLhr(audits as Parameters<typeof captureAuditsFromLhr>[0]);

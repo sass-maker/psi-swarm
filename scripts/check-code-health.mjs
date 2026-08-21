@@ -68,7 +68,7 @@ function checkComplexity() {
     maxParams: Math.max(...rows.map((row) => row[3])),
   };
   // Debt: https://github.com/sass-maker/fleet-workspace/issues/332
-  const baseline = { violations: 17, maxCcn: 27, maxLength: 193, maxParams: 7 };
+  const baseline = { violations: 0, maxCcn: 15, maxLength: 100, maxParams: 7 };
   console.log(
     `Complexity: ${observed.functions} functions, ${observed.nloc} NLOC, ` +
       `${observed.violations} violations; max CCN ${observed.maxCcn}, ` +

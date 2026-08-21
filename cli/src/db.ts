@@ -106,6 +106,33 @@ export interface HistoryRow {
   tag: string | null;
 }
 
+const RUN_METRIC_KEYS = [
+  'lcp',
+  'cls',
+  'inp',
+  'tbt',
+  'fcp',
+  'ttfb',
+  'si',
+  'performance_score',
+] as const;
+
+function buildRunRowParams(r: NewRun): Record<string, string | number | null> {
+  const m = r.metrics ?? {};
+  const row: Record<string, string | number | null> = {
+    url: r.url,
+    preset: r.preset,
+    started_at: r.started_at,
+    finished_at: r.finished_at,
+    error: r.error ?? null,
+    tag: r.tag ?? null,
+  };
+  for (const key of RUN_METRIC_KEYS) {
+    row[key] = m[key] ?? null;
+  }
+  return row;
+}
+
 export class HistoryDB {
   private db: Database.Database;
 
@@ -281,23 +308,7 @@ export class HistoryDB {
         @error, @tag
       )
     `);
-    const m = r.metrics ?? {};
-    const result = stmt.run({
-      url: r.url,
-      preset: r.preset,
-      started_at: r.started_at,
-      finished_at: r.finished_at,
-      lcp: m.lcp ?? null,
-      cls: m.cls ?? null,
-      inp: m.inp ?? null,
-      tbt: m.tbt ?? null,
-      fcp: m.fcp ?? null,
-      ttfb: m.ttfb ?? null,
-      si: m.si ?? null,
-      performance_score: m.performance_score ?? null,
-      error: r.error ?? null,
-      tag: r.tag ?? null,
-    });
+    const result = stmt.run(buildRunRowParams(r));
     return Number(result.lastInsertRowid);
   }
 

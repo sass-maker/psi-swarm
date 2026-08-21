@@ -148,6 +148,45 @@ export interface RenderOptions {
   traceInsights?: TraceInsightRecord[];
 }
 
+function groupByPreset(results: RunResult[]): Map<string, RunResult[]> {
+  const byPreset = new Map<string, RunResult[]>();
+  for (const r of results) {
+    const arr = byPreset.get(r.preset.name) ?? [];
+    arr.push(r);
+    byPreset.set(r.preset.name, arr);
+  }
+  return byPreset;
+}
+
+function renderPresetSections(byPreset: Map<string, RunResult[]>): string[] {
+  const sections: string[] = [];
+  for (const [presetName, rs] of byPreset) {
+    const label = rs[0].preset.label;
+    const stats = statsByMetric(rs);
+    sections.push(presetTable(`${presetName}  ·  ${label}  ·  n=${rs.length}`, stats));
+    const strip = distributionStrip(rs);
+    if (strip) sections.push(strip);
+  }
+  return sections;
+}
+
+function renderOpportunitySections(url: string, byPreset: Map<string, RunResult[]>): string[] {
+  const sections: string[] = [];
+  for (const [presetName, rs] of byPreset) {
+    const anyAudits = rs.some((r) => (r as { audits?: unknown[] }).audits?.length);
+    if (!anyAudits) continue;
+    const diag = diagnosePreset(
+      url,
+      presetName,
+      rs as never,
+      rs[0].preset.label,
+      rs[0].preset.formFactor
+    );
+    sections.push(renderOpportunities(diag));
+  }
+  return sections;
+}
+
 export function renderSwarmReport(
   url: string,
   results: RunResult[],
@@ -156,12 +195,7 @@ export function renderSwarmReport(
 ): string {
   const okResults = results.filter((r) => !r.error && hasValidMetrics(r.metrics));
   const errors = results.length - okResults.length;
-  const byPreset = new Map<string, RunResult[]>();
-  for (const r of okResults) {
-    const arr = byPreset.get(r.preset.name) ?? [];
-    arr.push(r);
-    byPreset.set(r.preset.name, arr);
-  }
+  const byPreset = groupByPreset(okResults);
 
   const headerLines: string[] = [
     chalk.bold('psi-swarm report'),
@@ -183,13 +217,7 @@ export function renderSwarmReport(
     }),
   ];
 
-  for (const [presetName, rs] of byPreset) {
-    const label = rs[0].preset.label;
-    const stats = statsByMetric(rs);
-    sections.push(presetTable(`${presetName}  ·  ${label}  ·  n=${rs.length}`, stats));
-    const strip = distributionStrip(rs);
-    if (strip) sections.push(strip);
-  }
+  sections.push(...renderPresetSections(byPreset));
 
   const verdict = overallVerdict(okResults);
   if (verdict) sections.push(verdict);
@@ -212,18 +240,7 @@ export function renderSwarmReport(
   if (gapSection) sections.push(gapSection);
 
   // "Why?" — surface Lighthouse opportunities + LCP element if audits were captured.
-  for (const [presetName, rs] of byPreset) {
-    const anyAudits = rs.some((r) => (r as { audits?: unknown[] }).audits?.length);
-    if (!anyAudits) continue;
-    const diag = diagnosePreset(
-      url,
-      presetName,
-      rs as never,
-      rs[0].preset.label,
-      rs[0].preset.formFactor
-    );
-    sections.push(renderOpportunities(diag));
-  }
+  sections.push(...renderOpportunitySections(url, byPreset));
 
   if (renderOpts.traceInsights && renderOpts.traceInsights.length > 0) {
     sections.push(renderTraceInsights(renderOpts.traceInsights));
@@ -309,6 +326,28 @@ function renderWeightedVerdict(
   );
 }
 
+function collectLabLcpsForFactor(
+  byPreset: Map<string, RunResult[]>,
+  factor: 'mobile' | 'desktop'
+): number[] {
+  const labLcps: number[] = [];
+  for (const [, runs] of byPreset) {
+    const p = runs[0]?.preset;
+    if (!p || p.formFactor !== factor) continue;
+    for (const r of runs) {
+      if (typeof r.metrics?.lcp === 'number') labLcps.push(r.metrics.lcp);
+    }
+  }
+  return labLcps;
+}
+
+function labFieldVerdict(ratio: number): string {
+  if (ratio >= 1.5) return chalk.yellow(`lab is ${ratio.toFixed(1)}× more pessimistic`);
+  if (ratio <= 0.67)
+    return chalk.red(`lab is ${(1 / ratio).toFixed(1)}× more optimistic than reality`);
+  return chalk.green('lab matches reality (within ±50%)');
+}
+
 function renderLabFieldGap(
   byPreset: Map<string, RunResult[]>,
   cruxByFormFactor?: { mobile?: CruxRecord | null; desktop?: CruxRecord | null }
@@ -321,30 +360,14 @@ function renderLabFieldGap(
   const lines: string[] = [];
   for (const { factor, rec } of factors) {
     if (!rec) continue;
-    // Aggregate lab LCP values across all presets matching this form factor.
-    const labLcps: number[] = [];
-    for (const [, runs] of byPreset) {
-      const p = runs[0]?.preset;
-      if (!p) continue;
-      if (p.formFactor !== factor) continue;
-      for (const r of runs) {
-        if (typeof r.metrics?.lcp === 'number') labLcps.push(r.metrics.lcp);
-      }
-    }
+    const labLcps = collectLabLcpsForFactor(byPreset, factor);
     if (labLcps.length === 0) continue;
     const labStats = computeStats(labLcps);
     if (!labStats) continue;
     const fieldLcp = rec.metrics.lcp?.p75;
     if (typeof fieldLcp !== 'number') continue;
     const ratio = labStats.p75 / fieldLcp;
-    let verdict: string;
-    if (ratio >= 1.5) {
-      verdict = chalk.yellow(`lab is ${ratio.toFixed(1)}× more pessimistic`);
-    } else if (ratio <= 0.67) {
-      verdict = chalk.red(`lab is ${(1 / ratio).toFixed(1)}× more optimistic than reality`);
-    } else {
-      verdict = chalk.green('lab matches reality (within ±50%)');
-    }
+    const verdict = labFieldVerdict(ratio);
     const lab =
       labStats.p75 >= 1000
         ? `${(labStats.p75 / 1000).toFixed(2)}s`
@@ -461,35 +484,45 @@ function renderTraceInsights(insights: TraceInsightRecord[]): string {
   return lines.join('\n');
 }
 
+function renderLcpElementBlock(d: Diagnosis): string[] {
+  const lines: string[] = [];
+  if (!d.lcpElement) return lines;
+  const el = d.lcpElement;
+  const head = el.nodeLabel ?? el.selector ?? '';
+  const snippet = (el.snippet ?? '').replace(/\s+/g, ' ').trim();
+  lines.push(chalk.dim('LCP element: ') + chalk.yellow(head || '(unknown)'));
+  if (snippet) {
+    const trimmed = snippet.length > 130 ? snippet.slice(0, 127) + '...' : snippet;
+    lines.push(chalk.dim('             ') + chalk.gray(trimmed));
+  }
+  return lines;
+}
+
+function renderLcpPhasesBlock(d: Diagnosis): string[] {
+  const lines: string[] = [];
+  if (!d.lcpPhases || d.lcpPhases.length === 0) return lines;
+  const phaseStr = d.lcpPhases
+    .map((p) => {
+      const colorize =
+        parseInt(p.percent, 10) >= 40
+          ? chalk.red
+          : parseInt(p.percent, 10) >= 25
+            ? chalk.yellow
+            : chalk.dim;
+      const ms =
+        p.medianMs >= 1000 ? `${(p.medianMs / 1000).toFixed(1)}s` : `${Math.round(p.medianMs)}ms`;
+      return colorize(`${p.phase} ${p.percent} (${ms})`);
+    })
+    .join(chalk.dim('  ·  '));
+  lines.push(chalk.dim('LCP phases : ') + phaseStr);
+  return lines;
+}
+
 function renderOpportunities(d: Diagnosis): string {
   const lines: string[] = [];
   lines.push(chalk.cyan.bold(`Why ${d.preset}?`) + chalk.dim(`  (n=${d.okRuns})`));
-  if (d.lcpElement) {
-    const el = d.lcpElement;
-    const head = el.nodeLabel ?? el.selector ?? '';
-    const snippet = (el.snippet ?? '').replace(/\s+/g, ' ').trim();
-    lines.push(chalk.dim('LCP element: ') + chalk.yellow(head || '(unknown)'));
-    if (snippet) {
-      const trimmed = snippet.length > 130 ? snippet.slice(0, 127) + '...' : snippet;
-      lines.push(chalk.dim('             ') + chalk.gray(trimmed));
-    }
-  }
-  if (d.lcpPhases && d.lcpPhases.length > 0) {
-    const phaseStr = d.lcpPhases
-      .map((p) => {
-        const colorize =
-          parseInt(p.percent, 10) >= 40
-            ? chalk.red
-            : parseInt(p.percent, 10) >= 25
-              ? chalk.yellow
-              : chalk.dim;
-        const ms =
-          p.medianMs >= 1000 ? `${(p.medianMs / 1000).toFixed(1)}s` : `${Math.round(p.medianMs)}ms`;
-        return colorize(`${p.phase} ${p.percent} (${ms})`);
-      })
-      .join(chalk.dim('  ·  '));
-    lines.push(chalk.dim('LCP phases : ') + phaseStr);
-  }
+  lines.push(...renderLcpElementBlock(d));
+  lines.push(...renderLcpPhasesBlock(d));
   const ops = rankOpportunities(d, 8);
   if (ops.length === 0) {
     lines.push(

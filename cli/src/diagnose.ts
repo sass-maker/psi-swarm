@@ -63,17 +63,7 @@ function dedupeItems(items: AuditItem[]): AuditItem[] {
   return out;
 }
 
-export function diagnosePreset(
-  url: string,
-  presetName: string,
-  results: RunResultWithArtifact[],
-  presetLabel?: string,
-  formFactor?: 'mobile' | 'desktop'
-): Diagnosis {
-  const okResults = results.filter((r) => !r.error && r.audits && r.audits.length > 0);
-  const consistencyNotes: string[] = [];
-
-  // Index audits by id across runs.
+function indexAuditsByRun(okResults: RunResultWithArtifact[]): Map<string, CapturedAudit[]> {
   const byId = new Map<string, CapturedAudit[]>();
   for (const r of okResults) {
     if (!r.audits) continue;
@@ -83,52 +73,54 @@ export function diagnosePreset(
       byId.set(a.id, list);
     }
   }
+  return byId;
+}
 
-  const aggregated: AggregatedAudit[] = [];
-  for (const spec of ACTIONABLE_AUDITS) {
-    const observations = byId.get(spec.id);
-    if (!observations || observations.length === 0) continue;
-    const failedIn = observations.filter(
-      (o) => typeof o.score === 'number' && o.score < FAILING_SCORE_THRESHOLD
-    ).length;
-    const numericValues = observations
-      .map((o) => o.numericValue)
-      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
-    const itemsCombined: AuditItem[] = [];
-    let displayValue: string | undefined;
-    let unit: string | undefined;
-    for (const o of observations) {
-      if (o.topItems) itemsCombined.push(...o.topItems);
-      if (o.displayValue && (!displayValue || o.displayValue.length > displayValue.length)) {
-        displayValue = o.displayValue;
-      }
-      if (!unit && o.numericUnit) unit = o.numericUnit;
+function aggregateAuditSpec(
+  spec: ActionableAuditSpec,
+  observations: CapturedAudit[],
+  totalRuns: number
+): AggregatedAudit {
+  const failedIn = observations.filter(
+    (o) => typeof o.score === 'number' && o.score < FAILING_SCORE_THRESHOLD
+  ).length;
+  const numericValues = observations
+    .map((o) => o.numericValue)
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  const itemsCombined: AuditItem[] = [];
+  let displayValue: string | undefined;
+  let unit: string | undefined;
+  for (const o of observations) {
+    if (o.topItems) itemsCombined.push(...o.topItems);
+    if (o.displayValue && (!displayValue || o.displayValue.length > displayValue.length)) {
+      displayValue = o.displayValue;
     }
-    aggregated.push({
-      spec,
-      observedIn: observations.length,
-      totalRuns: okResults.length,
-      failedIn,
-      medianNumericValue: median(numericValues),
-      unit,
-      displayValue,
-      topItems: dedupeItems(itemsCombined).slice(0, 5),
-    });
+    if (!unit && o.numericUnit) unit = o.numericUnit;
   }
+  return {
+    spec,
+    observedIn: observations.length,
+    totalRuns,
+    failedIn,
+    medianNumericValue: median(numericValues),
+    unit,
+    displayValue,
+    topItems: dedupeItems(itemsCombined).slice(0, 5),
+  };
+}
 
-  // Pull LCP element + phase breakdown if available.
-  let lcpElement: Diagnosis['lcpElement'];
-  let lcpPhases: Diagnosis['lcpPhases'];
+function extractLcpElement(aggregated: AggregatedAudit[]): Diagnosis['lcpElement'] {
   const lcpAudit = aggregated.find((a) => a.spec.id === 'largest-contentful-paint-element');
-  if (lcpAudit && lcpAudit.topItems.length > 0) {
-    const first = lcpAudit.topItems[0];
-    lcpElement = {
-      snippet: first.node?.snippet ?? first.snippet,
-      selector: first.node?.selector,
-      nodeLabel: first.node?.nodeLabel,
-    };
-  }
-  // Aggregate phase breakdown across all runs that captured it.
+  if (!lcpAudit || lcpAudit.topItems.length === 0) return undefined;
+  const first = lcpAudit.topItems[0];
+  return {
+    snippet: first.node?.snippet ?? first.snippet,
+    selector: first.node?.selector,
+    nodeLabel: first.node?.nodeLabel,
+  };
+}
+
+function aggregateLcpPhases(okResults: RunResultWithArtifact[]): Diagnosis['lcpPhases'] {
   const phaseObservations = new Map<string, { timings: number[]; percent: string }>();
   for (const r of okResults) {
     const lcpAuditRun = r.audits?.find((au) => au.id === 'largest-contentful-paint-element');
@@ -141,13 +133,35 @@ export function diagnosePreset(
       phaseObservations.set(p.phase, cur);
     }
   }
-  if (phaseObservations.size > 0) {
-    lcpPhases = Array.from(phaseObservations.entries()).map(([phase, data]) => ({
-      phase,
-      medianMs: median(data.timings) ?? 0,
-      percent: data.percent,
-    }));
+  if (phaseObservations.size === 0) return undefined;
+  return Array.from(phaseObservations.entries()).map(([phase, data]) => ({
+    phase,
+    medianMs: median(data.timings) ?? 0,
+    percent: data.percent,
+  }));
+}
+
+export function diagnosePreset(
+  url: string,
+  presetName: string,
+  results: RunResultWithArtifact[],
+  presetLabel?: string,
+  formFactor?: 'mobile' | 'desktop'
+): Diagnosis {
+  const okResults = results.filter((r) => !r.error && r.audits && r.audits.length > 0);
+  const consistencyNotes: string[] = [];
+
+  const byId = indexAuditsByRun(okResults);
+
+  const aggregated: AggregatedAudit[] = [];
+  for (const spec of ACTIONABLE_AUDITS) {
+    const observations = byId.get(spec.id);
+    if (!observations || observations.length === 0) continue;
+    aggregated.push(aggregateAuditSpec(spec, observations, okResults.length));
   }
+
+  const lcpElement = extractLcpElement(aggregated);
+  const lcpPhases = aggregateLcpPhases(okResults);
 
   if (okResults.length < results.length) {
     consistencyNotes.push(
@@ -203,6 +217,34 @@ export interface FormattedAudit {
   topItems: { label: string; detail?: string }[];
 }
 
+function firstAuditLabel(it: AuditItem): string {
+  const candidates = [
+    it.url,
+    it.source,
+    it.node?.nodeLabel,
+    it.node?.selector,
+    it.node?.snippet,
+    it.snippet,
+  ];
+  for (const c of candidates) {
+    if (c) return c;
+  }
+  return '(item)';
+}
+
+function auditItemDetail(it: AuditItem): string | undefined {
+  if (typeof it.wastedBytes === 'number') return `${Math.round(it.wastedBytes / 1024)}KB wasted`;
+  if (typeof it.wastedMs === 'number') return `${Math.round(it.wastedMs)}ms`;
+  if (typeof it.totalBytes === 'number') return `${Math.round(it.totalBytes / 1024)}KB`;
+  return undefined;
+}
+
+function formatAuditItem(it: AuditItem): { label: string; detail?: string } {
+  const label = firstAuditLabel(it);
+  const truncated = label.length > 100 ? label.slice(0, 97) + '...' : label;
+  return { label: truncated, detail: auditItemDetail(it) };
+}
+
 export function formatAggregatedAudit(a: AggregatedAudit): FormattedAudit {
   let display = a.displayValue ?? '';
   let savings = '';
@@ -220,23 +262,7 @@ export function formatAggregatedAudit(a: AggregatedAudit): FormattedAudit {
   if (!display && a.medianNumericValue !== undefined && a.unit) {
     display = `${a.medianNumericValue.toFixed(0)} ${a.unit}`;
   }
-  const topItems = a.topItems.slice(0, 3).map((it) => {
-    const label =
-      it.url ??
-      it.source ??
-      it.node?.nodeLabel ??
-      it.node?.selector ??
-      it.node?.snippet ??
-      it.snippet ??
-      '(item)';
-    const truncated = label.length > 100 ? label.slice(0, 97) + '...' : label;
-    let detail: string | undefined;
-    if (typeof it.wastedBytes === 'number')
-      detail = `${Math.round(it.wastedBytes / 1024)}KB wasted`;
-    else if (typeof it.wastedMs === 'number') detail = `${Math.round(it.wastedMs)}ms`;
-    else if (typeof it.totalBytes === 'number') detail = `${Math.round(it.totalBytes / 1024)}KB`;
-    return { label: truncated, detail };
-  });
+  const topItems = a.topItems.slice(0, 3).map(formatAuditItem);
   return {
     label: a.spec.label,
     display,

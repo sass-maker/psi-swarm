@@ -71,6 +71,28 @@ function baselineRuns(db: HistoryDB, url: string, preset: string, baselineTag?: 
   );
 }
 
+function classifyLcpDelta(
+  delta: number,
+  deltaPct: number,
+  thresholds?: { lcpMs?: number; lcpPct?: number }
+): 'regressed' | 'improved' | 'stable' {
+  const ms = thresholds?.lcpMs ?? DEFAULT_LCP_REGRESSION_MS;
+  const pct = thresholds?.lcpPct ?? DEFAULT_LCP_REGRESSION_PCT;
+  if (delta >= ms || deltaPct >= pct) return 'regressed';
+  if (delta <= -ms || deltaPct <= -pct) return 'improved';
+  return 'stable';
+}
+
+function classifyScoreDelta(
+  delta: number,
+  thresholds?: { score?: number }
+): 'regressed' | 'improved' | 'stable' {
+  const score = thresholds?.score ?? DEFAULT_SCORE_REGRESSION;
+  if (delta <= -score) return 'regressed';
+  if (delta >= score) return 'improved';
+  return 'stable';
+}
+
 function classifyDelta(
   metric: 'lcp' | 'performance_score',
   baseline?: number,
@@ -87,17 +109,11 @@ function classifyDelta(
   }
   const delta = latest - baseline;
   const deltaPct = baseline === 0 ? 0 : (delta / baseline) * 100;
-  if (metric === 'lcp') {
-    const ms = thresholds?.lcpMs ?? DEFAULT_LCP_REGRESSION_MS;
-    const pct = thresholds?.lcpPct ?? DEFAULT_LCP_REGRESSION_PCT;
-    if (delta >= ms || deltaPct >= pct) return { delta, deltaPct, direction: 'regressed' };
-    if (delta <= -ms || deltaPct <= -pct) return { delta, deltaPct, direction: 'improved' };
-    return { delta, deltaPct, direction: 'stable' };
-  }
-  const score = thresholds?.score ?? DEFAULT_SCORE_REGRESSION;
-  if (delta <= -score) return { delta, deltaPct, direction: 'regressed' };
-  if (delta >= score) return { delta, deltaPct, direction: 'improved' };
-  return { delta, deltaPct, direction: 'stable' };
+  const direction =
+    metric === 'lcp'
+      ? classifyLcpDelta(delta, deltaPct, thresholds)
+      : classifyScoreDelta(delta, thresholds);
+  return { delta, deltaPct, direction };
 }
 
 export function evaluateWatchlist(db: HistoryDB, refreshedAt = Date.now()): WatchlistQueueItem[] {

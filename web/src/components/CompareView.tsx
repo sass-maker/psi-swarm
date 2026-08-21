@@ -84,13 +84,13 @@ function colorClass(
   spec: { good?: number; poor?: number; higherIsBetter?: boolean }
 ): string {
   if (v === undefined || !Number.isFinite(v)) return 'text-[var(--color-dim)]';
-  if (spec.higherIsBetter) {
-    if (v >= (spec.good ?? 0)) return 'text-[var(--color-good)]';
-    if (v >= ((spec.poor ?? 0) + (spec.good ?? 0)) / 2) return 'text-[var(--color-warn)]';
-    return 'text-[var(--color-poor)]';
-  }
-  if (v <= (spec.good ?? 0)) return 'text-[var(--color-good)]';
-  if (v <= (spec.poor ?? Infinity)) return 'text-[var(--color-warn)]';
+  const good = spec.good ?? 0;
+  const poor = spec.poor ?? (spec.higherIsBetter ? 0 : Infinity);
+  const mid = (poor + good) / 2;
+  const isGood = spec.higherIsBetter ? v >= good : v <= good;
+  const isWarn = spec.higherIsBetter ? v >= mid : v <= poor;
+  if (isGood) return 'text-[var(--color-good)]';
+  if (isWarn) return 'text-[var(--color-warn)]';
   return 'text-[var(--color-poor)]';
 }
 

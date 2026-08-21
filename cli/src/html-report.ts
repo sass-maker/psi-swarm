@@ -421,12 +421,12 @@ function tierClass(
   spec: { good?: number; poor?: number; higherIsBetter?: boolean }
 ): string {
   if (v === undefined || !Number.isFinite(v)) return 'dim';
-  if (spec.higherIsBetter) {
-    if (v >= (spec.good ?? 0)) return 'good';
-    if (v >= ((spec.poor ?? 0) + (spec.good ?? 0)) / 2) return 'warn';
-    return 'poor';
-  }
-  if (v <= (spec.good ?? 0)) return 'good';
-  if (v <= (spec.poor ?? Infinity)) return 'warn';
+  const good = spec.good ?? 0;
+  const poor = spec.poor ?? (spec.higherIsBetter ? 0 : Infinity);
+  const mid = (poor + good) / 2;
+  const isGood = spec.higherIsBetter ? v >= good : v <= good;
+  const isWarn = spec.higherIsBetter ? v >= mid : v <= poor;
+  if (isGood) return 'good';
+  if (isWarn) return 'warn';
   return 'poor';
 }

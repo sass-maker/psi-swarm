@@ -20,7 +20,12 @@ import {
   isAhrefsCrawlerIp,
   type DomainRatingResult,
 } from './ahrefs.js';
-import { SwarmRunner, type RunResult, type RunResultWithArtifact } from './runner.js';
+import {
+  SwarmRunner,
+  type RunResult,
+  type RunResultWithArtifact,
+  type ScriptArtifact,
+} from './runner.js';
 import { HistoryDB, type RunRow } from './db.js';
 import { renderSwarmReport } from './report.js';
 import { discover, rank, type DiscoveredLink } from './discover.js';
@@ -128,33 +133,46 @@ program
         })
     );
 
-    let reasoningCapture:
-      | { text: string; backend?: string; model?: string; durationMs?: number }
-      | undefined;
-    if (opts.reason === true) {
-      reasoningCapture = await runReasoning(
-        url,
-        results,
-        opts.reasonModel ?? 'auto',
-        opts.reasonBackend ?? 'auto'
-      );
-    }
-
-    if (opts.output === 'html') {
-      writeHtmlReport(opts, url, results, elapsed, {
-        cruxByFormFactor,
-        domainRating,
-        reasoning: reasoningCapture,
-        traceInsights,
-      });
-    } else if (opts.output && opts.output !== 'html') {
-      console.error(chalk.red(`Unknown --output format: ${opts.output}. Try: html`));
-    }
+    const reasoningCapture = await maybeRunReasoning(opts, url, results);
+    writeReportOutput(opts, url, results, elapsed, {
+      cruxByFormFactor,
+      domainRating,
+      reasoning: reasoningCapture,
+      traceInsights,
+    });
 
     if (opts.suggest !== false) {
       await renderSuggestions(url, results);
     }
   });
+
+async function maybeRunReasoning(
+  opts: Record<string, unknown>,
+  url: string,
+  results: RunResultWithArtifact[]
+): Promise<{ text: string; backend?: string; model?: string; durationMs?: number } | undefined> {
+  if (opts.reason !== true) return undefined;
+  return runReasoning(
+    url,
+    results,
+    (opts.reasonModel as string) ?? 'auto',
+    (opts.reasonBackend as string) ?? 'auto'
+  );
+}
+
+function writeReportOutput(
+  opts: Record<string, unknown>,
+  url: string,
+  results: RunResultWithArtifact[],
+  elapsed: number,
+  ctx: HtmlReportContext
+): void {
+  if (opts.output === 'html') {
+    writeHtmlReport(opts, url, results, elapsed, ctx);
+  } else if (opts.output && opts.output !== 'html') {
+    console.error(chalk.red(`Unknown --output format: ${opts.output}. Try: html`));
+  }
+}
 
 function resolveRunConfig(opts: Record<string, unknown>): {
   presets: Preset[];
@@ -379,35 +397,63 @@ async function runReasoning(
   }
 }
 
-async function renderSuggestions(url: string, results: RunResultWithArtifact[]): Promise<void> {
-  try {
-    const scripts = results.find((r) => r.scripts && r.scripts.length > 0)?.scripts;
-    const allLinks = new Map<string, DiscoveredLink>();
-    const sources: string[] = [];
+async function collectDiscoveredLinks(
+  url: string,
+  scripts: ScriptArtifact[] | undefined
+): Promise<{ links: Map<string, DiscoveredLink>; sources: string[] }> {
+  const allLinks = new Map<string, DiscoveredLink>();
+  const sources: string[] = [];
 
-    // Source 1: static HTML + sitemap.
+  // Source 1: static HTML + sitemap.
+  try {
+    const { links, source } = await discover(url, { maxLinks: 50 });
+    if (links.length > 0) {
+      sources.push(source);
+      for (const l of links) if (!allLinks.has(l.url)) allLinks.set(l.url, l);
+    }
+  } catch {
+    /* skip */
+  }
+
+  // Source 2: framework route detection from the captured bundle JS.
+  if (scripts && scripts.length > 0) {
     try {
-      const { links, source } = await discover(url, { maxLinks: 50 });
-      if (links.length > 0) {
-        sources.push(source);
-        for (const l of links) if (!allLinks.has(l.url)) allLinks.set(l.url, l);
+      const routeResult = await detectFrameworkRoutes(url, scripts);
+      if (routeResult.routes.length > 0) {
+        sources.push(`framework:${routeResult.framework}`);
+        for (const l of routeResult.routes) if (!allLinks.has(l.url)) allLinks.set(l.url, l);
       }
     } catch {
       /* skip */
     }
+  }
 
-    // Source 2: framework route detection from the captured bundle JS.
-    if (scripts && scripts.length > 0) {
-      try {
-        const routeResult = await detectFrameworkRoutes(url, scripts);
-        if (routeResult.routes.length > 0) {
-          sources.push(`framework:${routeResult.framework}`);
-          for (const l of routeResult.routes) if (!allLinks.has(l.url)) allLinks.set(l.url, l);
-        }
-      } catch {
-        /* skip */
-      }
-    }
+  return { links: allLinks, sources };
+}
+
+function printDiscoveredLinks(merged: DiscoveredLink[], sources: string[]): void {
+  console.log(
+    '\n' +
+      chalk.cyan.bold('Other pages on this site you may want to test:') +
+      chalk.dim(`  (sources: ${sources.join(', ')})`)
+  );
+  const t = new Table({
+    head: [chalk.bold('Path'), chalk.bold('Link text')],
+    style: { head: [], border: ['gray'] },
+    colWidths: [42, 48],
+    wordWrap: true,
+  });
+  for (const l of merged) {
+    t.push([l.path, chalk.dim(l.text || '—')]);
+  }
+  console.log(t.toString());
+  console.log(chalk.dim(`  Re-run with any of these URLs:  psi-swarm run ${chalk.bold('<url>')}`));
+}
+
+async function renderSuggestions(url: string, results: RunResultWithArtifact[]): Promise<void> {
+  try {
+    const scripts = results.find((r) => r.scripts && r.scripts.length > 0)?.scripts;
+    const { links: allLinks, sources } = await collectDiscoveredLinks(url, scripts);
 
     const merged = rank(Array.from(allLinks.values())).slice(0, 15);
     if (merged.length === 0) {
@@ -421,24 +467,7 @@ async function renderSuggestions(url: string, results: RunResultWithArtifact[]):
       return;
     }
 
-    console.log(
-      '\n' +
-        chalk.cyan.bold('Other pages on this site you may want to test:') +
-        chalk.dim(`  (sources: ${sources.join(', ')})`)
-    );
-    const t = new Table({
-      head: [chalk.bold('Path'), chalk.bold('Link text')],
-      style: { head: [], border: ['gray'] },
-      colWidths: [42, 48],
-      wordWrap: true,
-    });
-    for (const l of merged) {
-      t.push([l.path, chalk.dim(l.text || '—')]);
-    }
-    console.log(t.toString());
-    console.log(
-      chalk.dim(`  Re-run with any of these URLs:  psi-swarm run ${chalk.bold('<url>')}`)
-    );
+    printDiscoveredLinks(merged, sources);
   } catch (err) {
     console.log(chalk.dim(`\n(Link discovery skipped: ${(err as Error).message})`));
   }
