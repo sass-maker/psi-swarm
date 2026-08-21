@@ -125,7 +125,7 @@ Internal (fleet):
   `pnpm --filter psi-swarm-web run build` → `web/dist`. Includes a static
   `/gallery` demo that works without the local agent.
 - **Public changelog** — `/changelog` records verified releases on the product
-  domain; planned work remains in Fleet Workspace GitHub Issues.
+  domain; planned work remains in PSI Swarm's GitHub Issues.
 - **CI/CD** — `.github/workflows/deploy.yml` builds the web workspace with
   pnpm and deploys `web/dist` via `cloudflare/wrangler-action@v3`. Trigger is
   **manual dispatch only** (not push) — `main` stays releasable but is not an
