@@ -99,7 +99,7 @@ export async function fetchDomainRating(
   const res = await fetch(`${AHREFS_ENDPOINT}?target=${encodeURIComponent(domain)}&output=json`, {
     headers: {
       'user-agent':
-        'Mozilla/5.0 (compatible; psi-swarm/0.2; +https://github.com/sarthakagrawal927/psi-swarm)',
+        'Mozilla/5.0 (compatible; psi-swarm/0.2; +https://github.com/sass-maker/psi-swarm)',
       ...ahrefsAuthHeaders(),
     },
     signal: AbortSignal.timeout(10_000),
@@ -260,7 +260,7 @@ async function fetchAhrefsList(
   const res = await fetch(`${url}?output=json`, {
     headers: {
       'user-agent':
-        'Mozilla/5.0 (compatible; psi-swarm/0.2; +https://github.com/sarthakagrawal927/psi-swarm)',
+        'Mozilla/5.0 (compatible; psi-swarm/0.2; +https://github.com/sass-maker/psi-swarm)',
       accept: 'application/json',
     },
     signal: AbortSignal.timeout(10_000),

@@ -54,7 +54,7 @@ function CommandBlock({ command, label }: { command: string; label: string }) {
 export function DisconnectedPanel({ onRetry, error }: DisconnectedPanelProps) {
   const [controllerOrigin, setControllerOrigin] = useState('https://performance.sassmaker.com');
   useEffect(() => setControllerOrigin(window.location.origin), []);
-  const installCommand = `git clone --depth 1 https://github.com/sarthakagrawal927/psi-swarm.git
+  const installCommand = `git clone --depth 1 https://github.com/sass-maker/psi-swarm.git
 cd psi-swarm
 corepack pnpm install --frozen-lockfile
 corepack pnpm run build:cli`;
@@ -94,7 +94,7 @@ corepack pnpm run build:cli`;
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="font-medium">Install and build the agent</h3>
               <a
-                href="https://github.com/sarthakagrawal927/psi-swarm"
+                href="https://github.com/sass-maker/psi-swarm"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="View public source (opens in a new tab)"
