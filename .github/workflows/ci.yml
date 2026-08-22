@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   reusable:
-    uses: sass-maker/workflows-and-skills/.github/workflows/psi-swarm-ci.yml@fabaa599ed9518deacaeab0ba332e25f3402e682
+    uses: sass-maker/saas-maker/.github/workflows/psi-swarm-ci.yml@8a8cf63ccf234e8194f1d4c7d29971ef19cfe674
 
   code-health:
     runs-on: ubuntu-latest
