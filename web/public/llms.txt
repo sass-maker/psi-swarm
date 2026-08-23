@@ -14,5 +14,13 @@
 ## Machine surfaces
 
 - [Agent catalog](https://performance.sassmaker.com/api/ai): JSON inventory of public surfaces
+- [OpenAPI spec](https://performance.sassmaker.com/openapi.json): Machine-readable API description
 - [Homepage markdown](https://performance.sassmaker.com/index.md): Product brief without JS
 - [This index](https://performance.sassmaker.com/llms.txt)
+
+## When to use this
+
+- Running distributional Lighthouse/PageSpeed audits across multiple device and network presets
+- Comparing p50/p75/p90/p99 Web Vitals percentiles instead of single-run noise
+- Tracking performance regressions across tagged swarms and project baselines
+- Exploring before-and-after performance optimization examples in the demo gallery
