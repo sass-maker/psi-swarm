@@ -2,6 +2,13 @@
 import '../styles/global.css';
 import RunDashboard from '../components/RunDashboard.tsx';
 import PublicRouteHead from '../components/PublicRouteHead.astro';
+
+const illustrativeLcp = [
+  { label: 'p50', value: '1.62 s', height: 54 },
+  { label: 'p75', value: '1.80 s', height: 67 },
+  { label: 'p90', value: '2.04 s', height: 82 },
+  { label: 'p99', value: '2.16 s', height: 94 },
+];
 ---
 
 <!doctype html>
@@ -16,7 +23,7 @@ import PublicRouteHead from '../components/PublicRouteHead.astro';
   </head>
   <body class="min-h-screen">
     <main class="max-w-5xl mx-auto px-6 py-10">
-      <header class="mb-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <header class="mb-10 flex flex-col gap-4 border-b border-[var(--color-border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
           <h1 class="text-3xl font-bold tracking-tight">
             <span class="text-[var(--color-cyan)]">psi</span>-swarm
@@ -43,12 +50,62 @@ import PublicRouteHead from '../components/PublicRouteHead.astro';
           </a>
         </nav>
       </header>
-      <RunDashboard client:load />
+      <section class="mb-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end" aria-labelledby="swarm-title">
+        <div>
+          <p class="mb-3 font-mono text-xs uppercase tracking-[0.16em] text-[var(--color-cyan)]">
+            Local-first performance lab
+          </p>
+          <h2 id="swarm-title" class="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.04em] sm:text-6xl">
+            One Lighthouse run is a clue. A swarm shows the shape.
+          </h2>
+          <p class="mt-5 max-w-2xl text-base leading-7 text-[var(--color-dim)]">
+            Run the same page across realistic desktop and mobile presets, compare the
+            distribution, then inspect the slowest measured case. The browser connects to your
+            local PSI Swarm agent; no remote account is required.
+          </p>
+        </div>
+        <figure class="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)]">
+          <figcaption class="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 text-xs text-[var(--color-dim)]">
+            <span>Illustrative result anatomy</span>
+            <span class="font-mono text-[var(--color-good)]">mobile · full</span>
+          </figcaption>
+          <div class="grid h-32 grid-cols-4 items-end gap-2 px-4 pt-5" aria-hidden="true">
+            {illustrativeLcp.map((point) => (
+              <span class="rounded-t bg-[var(--color-cyan)]/75" style={`height:${point.height}%`}></span>
+            ))}
+          </div>
+          <dl class="grid grid-cols-4 border-t border-[var(--color-border)]">
+            {illustrativeLcp.map((point) => (
+              <div class="border-l border-[var(--color-border)] px-2 py-3 first:border-l-0">
+                <dt class="font-mono text-[10px] text-[var(--color-dim)]">{point.label}</dt>
+                <dd class="mt-1 font-mono text-xs">{point.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p class="border-t border-[var(--color-border)] px-4 py-3 text-xs leading-5 text-[var(--color-dim)]">
+            Example values only. A real swarm adds min, max, σ, LCP phases, opportunities, and
+            before/after history from your own machine.
+          </p>
+        </figure>
+      </section>
+      <section aria-label="PSI Swarm dashboard">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <p class="font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-dim)]">Live product</p>
+          <p class="text-xs text-[var(--color-dim)]">Start the local agent, then connect below.</p>
+        </div>
+        <RunDashboard client:load />
+      </section>
     </main>
     <script
       is:inline
       src="https://sassmaker.com/project-strip.js"
       data-project="psi-swarm"
+      defer
+    ></script>
+    <script
+      is:inline
+      src="https://sassmaker.com/ai-chat-footer.js"
+      data-name="PSI Swarm"
       defer
     ></script>
   </body>
