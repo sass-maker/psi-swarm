@@ -28,6 +28,7 @@ machine; the browser UI is only a controller.
 | Configure the LLM "why is it slow" narrative | [Development → Reasoning backends](./development/reasoning-backends.md) |
 | Know the test/quality situation | [Development → Testing](./development/testing.md) |
 | Deploy the web app or run a redeploy | [Operations → Deploy](./operations/deploy.md) |
+| Package or publish the public CLI | [Operations → CLI release](./operations/release-cli.md) |
 | Understand the background refresh jobs | [Operations → Background jobs](./operations/background-jobs.md) |
 | Learn from past attempts and non-obvious gotchas | [Knowledge](./knowledge/) |
 

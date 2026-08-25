@@ -6,7 +6,7 @@
 
 A single PageSpeed Insights run tells you almost nothing — two runs on the same URL can disagree by 30%+ on LCP because of network jitter, CPU contention, third-party scripts, and server-side variance. `psi-swarm` runs the same audit many times across a matrix of realistic conditions and reports the **shape** of the distribution, not just one point.
 
-**Free, open source (MIT), fully local.** No account, no signup, no telemetry — nothing leaves your machine. Clone it, run it, own it.
+**Free, open source (MIT), fully local.** No account, no signup, no telemetry — nothing leaves your machine. Install it, run it, own it.
 
 ## Two ways to use it
 
@@ -39,31 +39,31 @@ psi-swarm/
                     Talks to the CLI's `serve` agent via CORS
 ```
 
-## Quick start (3 commands)
+## Quick start
 
 ```bash
-gh repo clone sass-maker/psi-swarm
-cd psi-swarm
-pnpm run setup                                                # installs + builds CLI
-pnpm run cli -- run https://example.com --runs 5 --parallel auto
+npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+psi-swarm run https://example.com --runs 5 --parallel auto
 ```
 
 That's it. Beautiful Ink-driven progress UI in the terminal, percentile tables, LCP element identification, and ranked Lighthouse opportunities.
 
-> **Node version**: use Node 22.19+. Lighthouse 13 requires Node >=22.19 and supports Node 24. The `engines` field gates this.
+> **Prerequisites**: Node 22.19 through Node 24 and Chrome. The release install
+> does not require Git, pnpm, or a source build. The targeted `--allow-scripts`
+> flag lets npm install PSI Swarm's SQLite native binding.
+
+Contributors can still clone the repository and run `pnpm run setup`; see the
+[development workflow](./docs/development/workflow.md).
 
 ### Web UI flavour
 
 The deployed controller at <https://performance.sassmaker.com> guides first-time
-users through the public local-agent setup. It requires Node 22 LTS, Git, and
-Chrome, then uses the compatible public v0.4.0 source:
+users through the public local-agent setup. It requires Node 22.19 through 24 and
+Chrome, then uses the compatible public v0.4.1 release:
 
 ```bash
-git clone --depth 1 https://github.com/sass-maker/psi-swarm.git
-cd psi-swarm
-corepack pnpm install --frozen-lockfile
-corepack pnpm run build:cli
-corepack pnpm run cli serve --origin https://performance.sassmaker.com
+npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+psi-swarm serve --origin https://performance.sassmaker.com
 ```
 
 Keep that terminal open, return to the controller, and select **Connect to local

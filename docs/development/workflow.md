@@ -7,9 +7,10 @@ description: Setup, build, dev commands, Node version, and how to preview/valida
 
 ## Prerequisites
 
-- **Node 22.19+** (required). Lighthouse 13 requires Node >=22.19 and supports Node 24 — see
+- **Node 22.19 through 24** (required). Lighthouse 13 requires Node >=22.19 and supports Node 24 — see
   [ADR](../architecture/decisions/node-22-lighthouse-12-pin.md). The
-  `engines` field gates to `>=22.19`.
+  `engines` field gates to `>=22.19 <25` because the public release contract is
+  tested only through the current Node 24 LTS line.
 - **pnpm 10.33.2** (pinned via `packageManager`). The repo is a pnpm
   workspace (`cli`, `web`). See [ADR](../architecture/decisions/pnpm-migration.md).
 - **Chrome** installed locally — `chrome-launcher` finds it. On CI/Docker
@@ -24,6 +25,9 @@ pnpm run setup          # pnpm install + builds the CLI
 If `pnpm install` fails on `better-sqlite3`, your Node version doesn't match
 the one the native binding was built against — re-run `pnpm install` after
 switching to Node 22.
+
+This section is for contributors. Product users should install the versioned
+GitHub Release package documented in the [CLI release runbook](../operations/release-cli.md).
 
 ## Day-to-day commands
 
@@ -40,6 +44,7 @@ Root scripts (from `package.json`):
 | `pnpm run build:web` | Astro build the web app into `web/dist`. |
 | `pnpm quality` | Run formatting, lint, builds, coverage, unused-code, complexity, duplication, cycle, dependency-risk, suppression, and docs checks. |
 | `pnpm run install:skill` | Install the Claude/Codex skill into `~/.claude/skills/`. |
+| `pnpm run release:verify -- vX.Y.Z` | Verify root/CLI version and release-tag alignment. |
 | `pnpm run deploy` | Guarded manual web redeploy — see [operations](../operations/deploy.md). Use `pnpm run deploy`, not `pnpm deploy` (which invokes pnpm's built-in workspace deploy command). |
 
 ### Typical dev loop

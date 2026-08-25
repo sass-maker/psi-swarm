@@ -24,18 +24,21 @@ Don't use this for: general web-dev advice without a URL, RUM/field-data-only qu
 
 ## Setup — check it's available
 
-psi-swarm lives at `~/Desktop/fleet/psi-swarm/`.
-The CLI binary is `node ~/Desktop/fleet/psi-swarm/cli/dist/cli.js`.
-
-If `cli/dist/cli.js` is missing, build it once:
+Prefer the public `psi-swarm` command. Verify it first:
 
 ```bash
-cd ~/Desktop/fleet/psi-swarm && pnpm install && pnpm --workspace cli run build
+psi-swarm --version
 ```
 
-> **Node version**: use the Node version that installed `node_modules`; the
-> native `better-sqlite3` binding must match it. The current Fleet installation
-> is verified on Node 24. Re-run `pnpm install` after changing Node versions.
+If it is unavailable, install the exact supported release:
+
+```bash
+npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+```
+
+For repository development, psi-swarm lives at `~/Desktop/fleet/psi-swarm/` and
+retains the `pnpm run setup` workflow. Node 22.19 through 24 and Chrome are
+required; the current Fleet installation is verified on Node 24.
 
 ## How to invoke
 
@@ -46,13 +49,13 @@ cd ~/Desktop/fleet/psi-swarm && pnpm install && pnpm --workspace cli run build
 For **product-level "is my site fast enough" questions** — use the `coverage` preset group + `coverage` profile. This runs every device class (slow 3G low-end Android, slow 4G mid Android, fast 4G iPhone, desktop cable) and gives a single weighted verdict representing ~globally-distributed real users:
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets coverage --profile coverage --reason --output html
+psi-swarm run <URL> --runs 5 --presets coverage --profile coverage --reason --output html
 ```
 
 For **focused PSI-style checks** (PageSpeed Insights matches mobile-mid + desktop only):
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --presets psi --reason --output html
+psi-swarm run <URL> --runs 5 --presets psi --reason --output html
 ```
 
 After the run completes, tell the user:
@@ -66,16 +69,16 @@ The HTML is self-contained (~10-17 KB, inline CSS, no external assets). They can
 For a fast directional check:
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 2 --presets desktop --reason --output html
+psi-swarm run <URL> --runs 2 --presets desktop --reason --output html
 ```
 
 ### Comparing two URLs or two states
 
 ```bash
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --tag before-deploy
+psi-swarm run <URL> --runs 5 --tag before-deploy
 # ... user ships the change ...
-node <psi-swarm>/cli/dist/cli.js run <URL> --runs 5 --tag after-deploy
-node <psi-swarm>/cli/dist/cli.js compare <URL> --baseline before-deploy --candidate after-deploy
+psi-swarm run <URL> --runs 5 --tag after-deploy
+psi-swarm compare <URL> --baseline before-deploy --candidate after-deploy
 ```
 
 ### What's a "simulation"?
@@ -141,7 +144,7 @@ Codex (OpenAI's CLI) reads `AGENTS.md` files instead of Claude's skill system. T
 ## psi-swarm (web perf tool)
 
 When the user asks about web performance of a URL (Lighthouse / Core Web Vitals / LCP / "is X slow"), run:
-  node ~/.psi-swarm-local/cli/dist/cli.js run <URL> --runs 5 --reason
+  psi-swarm run <URL> --runs 5 --reason
 
 Full docs: https://github.com/sass-maker/psi-swarm
 ```

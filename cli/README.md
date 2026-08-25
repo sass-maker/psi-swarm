@@ -7,15 +7,21 @@ A single PageSpeed run tells you almost nothing. Two runs on the same page can d
 ## Quick start
 
 ```bash
-npm install
-npm run build
-./dist/cli.js run https://example.com
+npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+psi-swarm run https://example.com
 ```
 
-Or during development:
+The versioned GitHub Release is the supported public distribution. It requires
+Node 22.19 through 24 and Chrome, but not Git, pnpm, or a source checkout. The
+targeted script allowance installs the SQLite native binding required by history.
+
+For repository development:
 
 ```bash
-npm run dev -- run https://example.com --runs 20
+git clone https://github.com/sass-maker/psi-swarm.git
+cd psi-swarm
+pnpm run setup
+pnpm run dev:cli -- run https://example.com --runs 20
 ```
 
 ## Usage
