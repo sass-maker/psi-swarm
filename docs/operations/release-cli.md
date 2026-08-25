@@ -10,13 +10,14 @@ GitHub Release. Users install it globally with npm, but no npm registry account
 or token is required:
 
 ```bash
-npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+npm install --global --allow-remote=root --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.2/psi-swarm-0.4.2.tgz
 ```
 
 The installed CLI keeps Lighthouse compute and SQLite history local. GitHub is
 only an installation source; running PSI Swarm has no GitHub dependency.
-The targeted script allowance is required by npm 12 to install the
-`better-sqlite3` native binding; it does not enable scripts for other packages.
+The targeted allowances are required by npm 12 to fetch the root package URL
+and install the `better-sqlite3` native binding. They do not enable remote
+dependencies or scripts for other packages.
 
 ## Compatibility contract
 

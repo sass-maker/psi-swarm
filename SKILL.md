@@ -33,7 +33,7 @@ psi-swarm --version
 If it is unavailable, install the exact supported release:
 
 ```bash
-npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+npm install --global --allow-remote=root --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.2/psi-swarm-0.4.2.tgz
 ```
 
 For repository development, psi-swarm lives at `~/Desktop/fleet/psi-swarm/` and

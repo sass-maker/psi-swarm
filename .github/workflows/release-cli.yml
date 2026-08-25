@@ -32,7 +32,8 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           prefix="$(mktemp -d "${RUNNER_TEMP}/psi-swarm-install-node22.XXXXXX")"
-          npm install --global --prefix "${prefix}" --allow-scripts=better-sqlite3 \
+          npm install --global --prefix "${prefix}" --allow-remote=root \
+            --allow-scripts=better-sqlite3 \
             "./release/psi-swarm-${version}.tgz"
           test "$("${prefix}/bin/psi-swarm" --version)" = "${version}"
           "${prefix}/bin/psi-swarm" presets >/dev/null
@@ -45,7 +46,8 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           prefix="$(mktemp -d "${RUNNER_TEMP}/psi-swarm-install-node24.XXXXXX")"
-          npm install --global --prefix "${prefix}" --allow-scripts=better-sqlite3 \
+          npm install --global --prefix "${prefix}" --allow-remote=root \
+            --allow-scripts=better-sqlite3 \
             "./release/psi-swarm-${version}.tgz"
           test "$("${prefix}/bin/psi-swarm" --version)" = "${version}"
           "${prefix}/bin/psi-swarm" presets >/dev/null
@@ -63,3 +65,14 @@ jobs:
               --title "psi-swarm ${GITHUB_REF_NAME}" \
               --generate-notes
           fi
+      - name: Verify public release URL
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          prefix="$(mktemp -d "${RUNNER_TEMP}/psi-swarm-public-node24.XXXXXX")"
+          url="https://github.com/sass-maker/psi-swarm/releases/download/${GITHUB_REF_NAME}/psi-swarm-${version}.tgz"
+          npm install --global --prefix "${prefix}" --allow-remote=root \
+            --allow-scripts=better-sqlite3 "${url}"
+          test "$("${prefix}/bin/psi-swarm" --version)" = "${version}"
+          "${prefix}/bin/psi-swarm" presets >/dev/null
+          "${prefix}/bin/psi-swarm" history https://example.com --limit 1 >/dev/null

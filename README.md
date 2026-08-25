@@ -42,15 +42,15 @@ psi-swarm/
 ## Quick start
 
 ```bash
-npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+npm install --global --allow-remote=root --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.2/psi-swarm-0.4.2.tgz
 psi-swarm run https://example.com --runs 5 --parallel auto
 ```
 
 That's it. Beautiful Ink-driven progress UI in the terminal, percentile tables, LCP element identification, and ranked Lighthouse opportunities.
 
 > **Prerequisites**: Node 22.19 through Node 24 and Chrome. The release install
-> does not require Git, pnpm, or a source build. The targeted `--allow-scripts`
-> flag lets npm install PSI Swarm's SQLite native binding.
+> does not require Git, pnpm, or a source build. The targeted npm allowances
+> permit only the release URL and PSI Swarm's SQLite native binding.
 
 Contributors can still clone the repository and run `pnpm run setup`; see the
 [development workflow](./docs/development/workflow.md).
@@ -59,10 +59,10 @@ Contributors can still clone the repository and run `pnpm run setup`; see the
 
 The deployed controller at <https://performance.sassmaker.com> guides first-time
 users through the public local-agent setup. It requires Node 22.19 through 24 and
-Chrome, then uses the compatible public v0.4.1 release:
+Chrome, then uses the compatible public v0.4.2 release:
 
 ```bash
-npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+npm install --global --allow-remote=root --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.2/psi-swarm-0.4.2.tgz
 psi-swarm serve --origin https://performance.sassmaker.com
 ```
 

@@ -60,7 +60,7 @@ function CommandBlock({ command, label }: { command: string; label: string }) {
 export function DisconnectedPanel({ onRetry, error }: DisconnectedPanelProps) {
   const [controllerOrigin, setControllerOrigin] = useState('https://performance.sassmaker.com');
   useEffect(() => setControllerOrigin(window.location.origin), []);
-  const installCommand = `npm install --global --allow-scripts=better-sqlite3 ${AGENT_RELEASE_URL}`;
+  const installCommand = `npm install --global --allow-remote=root --allow-scripts=better-sqlite3 ${AGENT_RELEASE_URL}`;
   const startCommand = `psi-swarm serve --origin ${controllerOrigin}`;
 
   return (
