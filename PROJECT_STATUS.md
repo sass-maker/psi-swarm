@@ -135,7 +135,7 @@ Internal (fleet):
   (`pnpm deploy` invokes pnpm's built-in workspace deploy command).
   `.github/workflows/psi-swarm-ci.yml` runs the CLI regression suite, CLI/web
   builds, and docs checks for helper changes; `.github/workflows/docs.yml`
-  separately validates docs paths and builds the Blume site.
+  separately validates docs paths.
 - **Installable skill** — `pnpm install:skill` installs the Claude/Codex skill
   documenting usage paths.
 

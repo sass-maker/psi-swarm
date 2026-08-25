@@ -61,20 +61,16 @@ pnpm run dev:cli -- run https://example.com --runs 3
 
 ## Docs workflow
 
-The `docs/` tree is the source of truth and is rendered by
-[Blume](https://useblume.dev) for the web. Blume is a devDependency at the
-repo root.
+The `docs/` tree is the source of truth and is validated directly from the
+repository.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm docs:dev` | Blume dev server with hot reload. |
-| `pnpm docs:build` | Build static docs site into `docs-dist/`. |
 | `pnpm docs:check` | Validate frontmatter + internal links across `docs/`. |
 
 Rules:
 
-- **Markdown is the source of truth.** Blume is only the presentation and
-  search layer. Never edit generated files in `docs-dist/`.
+- **Markdown is the source of truth.** Keep canonical content in this tree.
 - One home per fact — link to `PROJECT_STATUS.md` instead of restating
   history.
 - Run `pnpm docs:check` before merging docs changes. CI runs the same check
@@ -101,6 +97,5 @@ psi-swarm/
 │   └── public/   ← deployed agent-indexing surfaces and static assets
 ├── scripts/      ← deploy, skill install, cache-rules
 ├── docs/         ← this knowledge system (source of truth)
-├── blume.config.ts  ← Blume presentation config
 └── SKILL.md      ← installable agent skill (do not edit from docs work)
 ```

@@ -11,10 +11,8 @@ p99** of your Web Vitals instead of one noisy point. Compute stays on your
 machine; the browser UI is only a controller.
 
 > **Source of truth.** The Markdown in this `docs/` tree is the canonical
-> knowledge system. [Blume](https://useblume.dev) renders it for the web, but
-> Blume is only the presentation and search layer — the committed Markdown
-> stands on its own. See [Development → Workflow](./development/workflow.md)
-> for how to preview and validate docs.
+> knowledge system and stands on its own. See [Development → Workflow](./development/workflow.md)
+> for how to validate docs.
 
 ## Where to start
 

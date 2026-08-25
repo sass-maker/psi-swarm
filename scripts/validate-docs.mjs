@@ -2,15 +2,14 @@
 // validate-docs.mjs — lightweight docs validator for psi-swarm.
 //
 // Markdown under docs/ is the source of truth. This script keeps it trustworthy
-// without depending on Blume (so CI can run it on a bare checkout). It checks:
+// so CI can run it on a bare checkout. It checks:
 //
 //   1. Every docs/**/*.md file has YAML frontmatter with `title` and `description`.
 //   2. Every relative Markdown link resolves to a file that exists (within docs/
 //      or to repo-root files like ../PROJECT_STATUS.md, ../STATUS.md).
 //   3. No docs/ subdirectory is empty (no placeholder folders).
 //
-// External http(s) links are NOT checked here — Blume's `blume validate --external`
-// covers those when needed. Run this via `pnpm docs:check`.
+// External http(s) links are NOT checked here. Run this via `pnpm docs:check`.
 //
 // Exit code is non-zero if any problem is found, so it works as a CI gate.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';

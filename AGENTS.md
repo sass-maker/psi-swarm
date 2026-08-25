@@ -23,7 +23,6 @@ pnpm run serve                                      # local HTTP agent (for web 
 pnpm run web                                        # Astro dev server → :4321
 pnpm run build:cli && pnpm run build:web            # type-check by build
 pnpm docs:check                                     # validate docs/ + internal links
-pnpm docs:dev                                       # Blume docs dev server
 ```
 
 **Node 22.19+** required (Lighthouse 13 requires Node >=22.19 and supports Node 24). pnpm 10.33.2
@@ -72,9 +71,8 @@ Two status homes, by design — don't duplicate:
 
 ## Documentation maintenance rules
 
-1. **Markdown in `docs/` is the source of truth.** Blume
-   (`blume.config.ts`) is only the presentation/search layer — never edit
-   generated files in `docs-dist/`.
+1. **Markdown in `docs/` is the source of truth.** Keep canonical content in
+   the committed docs tree.
 2. **One home per fact.** If a fact lives in `PROJECT_STATUS.md` or in
    code, link to it; don't restate.
 3. **Code is authoritative** for implementation details and schedules.
