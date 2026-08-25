@@ -24,6 +24,7 @@ import { createDomainRatingScheduler } from './domain-rating-scheduler.js';
 import { exportSwarmArtifacts } from './artifacts.js';
 import { deriveTraceInsights } from './trace-insight.js';
 import { evaluateWatchlist, summarizeWatchlist } from './watchlist.js';
+import { VERSION } from './version.js';
 
 interface RunRecord {
   id: string;
@@ -43,7 +44,6 @@ interface RunRecord {
 }
 
 const runs = new Map<string, RunRecord>();
-const VERSION = '0.4.0';
 
 // Report registry: URL → file paths (newest first), built from any directory
 // where psi-swarm has written --output html files.

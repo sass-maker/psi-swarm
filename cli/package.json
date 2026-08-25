@@ -1,6 +1,6 @@
 {
   "name": "psi-swarm",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Run Lighthouse N times across realistic device/network presets. Get p50/p75/p90/p99 of your Web Vitals instead of a single noisy number.",
   "type": "module",
   "bin": {
@@ -18,10 +18,11 @@
     "start": "node dist/cli.js",
     "test": "tsx --test test/**/*.test.ts",
     "test:coverage": "node --import tsx --test --experimental-test-coverage --test-coverage-include='src/**/*.ts' --test-coverage-lines=75 --test-coverage-branches=79 --test-coverage-functions=66 test/**/*.test.ts",
+    "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run build"
   },
   "engines": {
-    "node": ">=22.19"
+    "node": ">=22.19 <25"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -51,5 +52,15 @@
     "p99",
     "core-web-vitals"
   ],
-  "license": "MIT"
+  "author": "Sarthak Agrawal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sass-maker/psi-swarm.git",
+    "directory": "cli"
+  },
+  "homepage": "https://performance.sassmaker.com",
+  "bugs": {
+    "url": "https://github.com/sass-maker/psi-swarm/issues"
+  }
 }

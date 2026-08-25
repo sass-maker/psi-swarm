@@ -34,7 +34,7 @@ element, LCP phase breakdown, ranked opportunities with byte/ms savings).
 
 | Surface | What it is | Where |
 | --- | --- | --- |
-| CLI | The engine. `run`, `discover`, `serve`, `history`, `compare`, `watch`, `connect`, `whoami` | `cli/` |
+| CLI | The engine. `run`, `discover`, `serve`, `history`, `compare`, `watch`, `connect`, `whoami`; distributed as a versioned GitHub Release package | `cli/` |
 | Web UI | Browser controller for the local `serve` agent | `web/` |
 | Deployed site | Static Astro build on Cloudflare Pages (`psi-swarm-web`) | https://performance.sassmaker.com |
 | Agent skill | Claude/Codex usage path | `SKILL.md` (installed via `pnpm install:skill`) |

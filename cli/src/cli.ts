@@ -43,6 +43,7 @@ import { exec } from 'node:child_process';
 import { exportSwarmArtifacts } from './artifacts.js';
 import { deriveTraceInsights } from './trace-insight.js';
 import { evaluateWatchlist, summarizeWatchlist } from './watchlist.js';
+import { VERSION } from './version.js';
 
 const program = new Command();
 
@@ -51,7 +52,7 @@ program
   .description(
     'Run Lighthouse N times across realistic presets. Get p50/p75/p90/p99 of your Web Vitals instead of a single noisy number.'
   )
-  .version('0.4.0');
+  .version(VERSION);
 
 program
   .command('run')

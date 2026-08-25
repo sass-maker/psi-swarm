@@ -1,0 +1,65 @@
+name: Release PSI Swarm CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.19'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release version
+        run: pnpm run release:verify -- "${GITHUB_REF_NAME}"
+      - name: Build and pack CLI
+        run: |
+          mkdir -p release
+          npm pack --workspace cli --pack-destination release
+      - name: Smoke packaged CLI on Node 22
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          prefix="$(mktemp -d "${RUNNER_TEMP}/psi-swarm-install-node22.XXXXXX")"
+          npm install --global --prefix "${prefix}" --allow-scripts=better-sqlite3 \
+            "./release/psi-swarm-${version}.tgz"
+          test "$("${prefix}/bin/psi-swarm" --version)" = "${version}"
+          "${prefix}/bin/psi-swarm" presets >/dev/null
+          "${prefix}/bin/psi-swarm" history https://example.com --limit 1 >/dev/null
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Smoke packaged CLI on Node 24
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          prefix="$(mktemp -d "${RUNNER_TEMP}/psi-swarm-install-node24.XXXXXX")"
+          npm install --global --prefix "${prefix}" --allow-scripts=better-sqlite3 \
+            "./release/psi-swarm-${version}.tgz"
+          test "$("${prefix}/bin/psi-swarm" --version)" = "${version}"
+          "${prefix}/bin/psi-swarm" presets >/dev/null
+          "${prefix}/bin/psi-swarm" history https://example.com --limit 1 >/dev/null
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          asset="release/psi-swarm-${version}.tgz"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${asset}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${asset}" \
+              --title "psi-swarm ${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi

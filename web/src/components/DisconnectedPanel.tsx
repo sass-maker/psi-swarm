@@ -1,4 +1,10 @@
 import { useEffect, useState } from 'react';
+import cliPackage from '../../../cli/package.json';
+
+const AGENT_VERSION = cliPackage.version;
+const AGENT_RELEASE_URL =
+  `https://github.com/sass-maker/psi-swarm/releases/download/v${AGENT_VERSION}/` +
+  `psi-swarm-${AGENT_VERSION}.tgz`;
 
 interface DisconnectedPanelProps {
   onRetry: () => void;
@@ -54,11 +60,8 @@ function CommandBlock({ command, label }: { command: string; label: string }) {
 export function DisconnectedPanel({ onRetry, error }: DisconnectedPanelProps) {
   const [controllerOrigin, setControllerOrigin] = useState('https://performance.sassmaker.com');
   useEffect(() => setControllerOrigin(window.location.origin), []);
-  const installCommand = `git clone --depth 1 https://github.com/sass-maker/psi-swarm.git
-cd psi-swarm
-corepack pnpm install --frozen-lockfile
-corepack pnpm run build:cli`;
-  const startCommand = `corepack pnpm run cli serve --origin ${controllerOrigin}`;
+  const installCommand = `npm install --global --allow-scripts=better-sqlite3 ${AGENT_RELEASE_URL}`;
+  const startCommand = `psi-swarm serve --origin ${controllerOrigin}`;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)]">
@@ -78,10 +81,8 @@ corepack pnpm run build:cli`;
           <div>
             <h3 className="font-medium">Check prerequisites</h3>
             <p className="mt-1 text-sm text-[var(--color-dim)]">
-              You need Node 22 LTS, Git, and Chrome. Node 24 and newer are not supported by the
-              current Lighthouse version. Check the first two with{' '}
-              <code className="font-mono">node --version</code> and{' '}
-              <code className="font-mono">git --version</code>.
+              You need Node 22.19 through Node 24 and Chrome. Check Node with{' '}
+              <code className="font-mono">node --version</code>.
             </p>
           </div>
         </li>
@@ -92,22 +93,22 @@ corepack pnpm run build:cli`;
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="font-medium">Install and build the agent</h3>
+              <h3 className="font-medium">Install the agent</h3>
               <a
-                href="https://github.com/sass-maker/psi-swarm"
+                href={`https://github.com/sass-maker/psi-swarm/releases/tag/v${AGENT_VERSION}`}
                 target="_blank"
                 rel="noreferrer"
-                aria-label="View public source (opens in a new tab)"
+                aria-label={`View agent release v${AGENT_VERSION} (opens in a new tab)`}
                 className="inline-flex min-h-11 items-center text-xs text-[var(--color-cyan)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)]/50"
               >
-                View public source ↗
+                Release v{AGENT_VERSION} ↗
               </a>
             </div>
             <p className="mb-3 text-sm text-[var(--color-dim)]">
-              Run once in the folder where you want to keep psi-swarm. Already installed? Skip to
-              step 3.
+              Run once from any folder. This installs the controller-compatible v{AGENT_VERSION}{' '}
+              package from its public GitHub Release. Already installed? Skip to step 3.
             </p>
-            <CommandBlock command={installCommand} label="Install commands" />
+            <CommandBlock command={installCommand} label="Install command" />
           </div>
         </li>
 
@@ -118,8 +119,8 @@ corepack pnpm run build:cli`;
           <div className="min-w-0">
             <h3 className="font-medium">Start the agent</h3>
             <p className="mb-3 mt-1 text-sm text-[var(--color-dim)]">
-              Run this from the cloned <code className="font-mono">psi-swarm</code> folder and leave
-              the terminal open. The allowed origin below matches this page.
+              Run this from any terminal and leave it open. The allowed origin below matches this
+              page.
             </p>
             <CommandBlock command={startCommand} label="Start command" />
           </div>
