@@ -7,13 +7,14 @@ A single PageSpeed run tells you almost nothing. Two runs on the same page can d
 ## Quick start
 
 ```bash
-npm install --global --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.1/psi-swarm-0.4.1.tgz
+npm install --global --allow-remote=root --allow-scripts=better-sqlite3 https://github.com/sass-maker/psi-swarm/releases/download/v0.4.2/psi-swarm-0.4.2.tgz
 psi-swarm run https://example.com
 ```
 
 The versioned GitHub Release is the supported public distribution. It requires
 Node 22.19 through 24 and Chrome, but not Git, pnpm, or a source checkout. The
-targeted script allowance installs the SQLite native binding required by history.
+targeted allowances permit the release URL and install the SQLite native binding
+required by history.
 
 For repository development:
 

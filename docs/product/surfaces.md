@@ -71,7 +71,7 @@ remembered past connection. See
 for why this matters.
 
 When no agent is available, the home route presents a numbered setup flow for
-Node 22.19 through 24, Chrome, the exact compatible public v0.4.1 GitHub Release package,
+Node 22.19 through 24, Chrome, the exact compatible public v0.4.2 GitHub Release package,
 and the final connection action. Installation does not require Git, pnpm, or a
 source build. Its start command derives the CORS `--origin` value from the
 current controller URL rather than assuming localhost.

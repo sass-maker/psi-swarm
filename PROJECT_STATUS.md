@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-13 (v0.4.0)
+Last updated: 2026-08-26 (v0.4.2)
 
 ## Why / What
 
@@ -47,6 +47,11 @@ Internal (fleet):
 
 ## Timeline
 
+- **2026-08-26 — v0.4.2 public CLI distribution:** Published an
+  npm-compatible package on GitHub Releases, verified clean global installs on
+  Node 22 and 24 (including SQLite history), and replaced the controller's
+  source-clone/build setup with one exact versioned install command. Runtime
+  compute, history, and reasoning remain local.
 - **2026-08-20 — Standalone ownership restored:** Synchronized PSI Swarm out of
   Fleet Workspace into `sass-maker/psi-swarm`, restored its repository-owned
   CLI, controller, docs, checks, and installable skill, and left production
@@ -114,7 +119,7 @@ Internal (fleet):
 
 ## Products
 
-- **CLI (`cli/`)** — `psi-swarm` Node CLI (npm-publishable package, v0.4.0)
+- **CLI (`cli/`)** — `psi-swarm` Node CLI (public GitHub Release package, v0.4.2)
   with `run`, `discover`, `serve`, `history`, `compare`, `watch`, `connect`,
   and `whoami` workflows. Compute stays local.
 - **Local web controller (`web/`)** — Astro + React + Tailwind browser UI for
@@ -135,7 +140,9 @@ Internal (fleet):
   (`pnpm deploy` invokes pnpm's built-in workspace deploy command).
   `.github/workflows/psi-swarm-ci.yml` runs the CLI regression suite, CLI/web
   builds, and docs checks for helper changes; `.github/workflows/docs.yml`
-  separately validates docs paths.
+  separately validates docs paths. `.github/workflows/release-cli.yml` packages
+  version tags, smoke-tests clean installs on Node 22 and 24, and publishes the
+  tested tarball as a GitHub Release.
 - **Installable skill** — `pnpm install:skill` installs the Claude/Codex skill
   documenting usage paths.
 
@@ -184,6 +191,9 @@ Web controller & sharing:
   intent (no failed `127.0.0.1` requests on the deployed site).
 
 Fleet & tooling:
+- Versioned public CLI package with a clean-prefix release gate and an exact
+  controller-compatible install path; no registry account or source build is
+  required.
 - Fleet Ultracite/Biome lint contract covers the CLI, web app, tests, and
   scripts with zero findings across 59 applicable files.
 - SaaS Maker auth hub: CLI device-flow `connect` / `whoami` for fleet Cockpit
