@@ -1,0 +1,40 @@
+{
+  "$schema": "fleet.landing-audit.v1",
+  "project": "psi-swarm",
+  "priority": "P4",
+  "decision": "Infrastructure",
+  "auditedAt": "2026-08-29",
+  "candidateUrl": "https://adoption-boots-belts-york.trycloudflare.com/",
+  "productionUrl": "https://performance.sassmaker.com/",
+  "releaseState": "Local candidate qualified; footer composition and canonical internal-navigation repairs are not deployed by this audit.",
+  "implementationAction": "preserve",
+  "migrationCandidate": false,
+  "gates": {
+    "contentPurpose": {
+      "score": 99,
+      "status": "pass",
+      "evidence": "The first viewport explains the core distinction from one-off Lighthouse tests, realistic repeated presets, percentile distributions, local execution, and the absence of a remote account. The live controller then gives truthful v0.4.2 setup instructions."
+    },
+    "designQuality": {
+      "score": 94,
+      "status": "pass",
+      "evidence": "The restrained performance-lab visual system has strong hierarchy, an illustrative percentile chart, and a coherent setup surface. Exact 390 and 1440 pixel checks found zero horizontal overflow or console errors and both required fleet footer elements."
+    },
+    "seo": {
+      "score": 98,
+      "status": "pass",
+      "evidence": "All 14 critical homepage checks passed with valid canonical, social metadata, WebPage schema, hierarchy, and links. The local six-page graph has zero errors, redirects, or orphan candidates after replacing page-relative navigation; the only advisory is the app-like homepage's roughly 258 words."
+    },
+    "geo": {
+      "score": 100,
+      "status": "pass",
+      "evidence": "The production agent-index audit is S-tier 100 with llms.txt, agent API, homepage Markdown, robots permission, sitemap coverage, and JSON-LD."
+    },
+    "performance": {
+      "score": 96,
+      "status": "pass",
+      "evidence": "PSI Swarm completed 4/4 coverage profiles. Weighted LCP was 0.954 s, mobile-mid 0.848 s, mobile-fast 0.473 s, desktop 0.282 s, CLS 0.031, and TBT 0 ms. The harsh slow-3G profile reached 4.73 s and Lighthouse identified about 27 KiB of unused JavaScript, acceptable as a P4 advisory."
+    }
+  },
+  "minimumObserved": 94
+}
