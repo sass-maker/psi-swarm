@@ -24,11 +24,11 @@ import PublicRouteHead from '../components/PublicRouteHead.astro';
           Compare two tagged swarms side-by-side — see if a deploy helped or hurt, at p50/p75/p90/p99.
         </p>
         <nav class="text-[var(--color-dim)] mt-3 text-xs flex flex-wrap gap-4">
-          <a href="./" class="text-[var(--color-cyan)] hover:underline">← run dashboard</a>
-          <a href="./projects/" class="hover:text-[var(--color-text)]">projects</a>
-          <a href="./watchlist/" class="hover:text-[var(--color-text)]">watchlist</a>
-          <a href="./gallery/" class="hover:text-[var(--color-text)]">demo gallery</a>
-          <a href="/changelog" class="hover:text-[var(--color-text)]">changelog</a>
+          <a href="/" class="text-[var(--color-cyan)] hover:underline">← run dashboard</a>
+          <a href="/projects/" class="hover:text-[var(--color-text)]">projects</a>
+          <a href="/watchlist/" class="hover:text-[var(--color-text)]">watchlist</a>
+          <a href="/gallery/" class="hover:text-[var(--color-text)]">demo gallery</a>
+          <a href="/changelog/" class="hover:text-[var(--color-text)]">changelog</a>
         </nav>
       </header>
       <CompareView client:load />

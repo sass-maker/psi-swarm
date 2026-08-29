@@ -24,11 +24,11 @@ import PublicRouteHead from '../components/PublicRouteHead.astro';
           Tracked URLs from your local SQLite history. Latest performance, recent trend, click to drill into the full run history.
         </p>
         <p class="text-[var(--color-dim)] mt-3 text-xs flex flex-wrap gap-4">
-          <a href="./" class="text-[var(--color-cyan)] hover:underline">← single-URL dashboard</a>
-          <a href="./compare/" class="hover:text-[var(--color-text)]">compare</a>
-          <a href="./watchlist/" class="hover:text-[var(--color-text)]">watchlist</a>
-          <a href="./gallery/" class="hover:text-[var(--color-text)]">demo gallery</a>
-          <a href="/changelog" class="hover:text-[var(--color-text)]">changelog</a>
+          <a href="/" class="text-[var(--color-cyan)] hover:underline">← single-URL dashboard</a>
+          <a href="/compare/" class="hover:text-[var(--color-text)]">compare</a>
+          <a href="/watchlist/" class="hover:text-[var(--color-text)]">watchlist</a>
+          <a href="/gallery/" class="hover:text-[var(--color-text)]">demo gallery</a>
+          <a href="/changelog/" class="hover:text-[var(--color-text)]">changelog</a>
         </p>
       </header>
       <ProjectsView client:load />
