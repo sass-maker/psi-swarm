@@ -25,6 +25,8 @@
     "node": ">=22.19 <25"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "2.0.41",
+    "ai": "6.0.168",
     "better-sqlite3": "^11.7.0",
     "boxen": "^8.0.1",
     "chalk": "^5.4.1",

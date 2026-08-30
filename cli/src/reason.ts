@@ -1,11 +1,15 @@
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { streamText } from 'ai';
+
 import { computeStats } from './stats.js';
 import type { Diagnosis } from './diagnose.js';
 import type { RunResultWithArtifact, MetricSet } from './runner.js';
 
-const DEFAULT_OPENAI_BASE = 'https://api.openai.com/v1';
+const DEFAULT_OPENAI_BASE = 'https://generativelanguage.googleapis.com/v1beta/openai';
 const DEFAULT_LOCAL_AI = 'http://localhost:3456';
 
 export type ReasonBackend = 'openai' | 'local-ai';
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 const SYSTEM_PROMPT = `You are analysing Lighthouse-derived performance data for a webpage. The data comes from N repeated Lighthouse runs against the same URL under controlled lab conditions (emulated network and CPU). Your job is to explain WHY the metrics are what they are and what specific changes would most improve them.
 
@@ -32,8 +36,8 @@ export interface ReasonOptions {
   // openai-compatible — works with OpenAI, OpenRouter, Groq, free-ai, etc.
   baseUrl?: string;
   apiKey?: string;
-  /** Optional extra body fields (e.g. { project_id: "..." } for gateways that want it). */
-  extraBody?: Record<string, unknown>;
+  /** Optional provider-specific body fields. */
+  extraBody?: Record<string, JsonValue>;
   /** Optional extra headers. */
   extraHeaders?: Record<string, string>;
   // local-ai
@@ -155,10 +159,10 @@ function normalizeModelSpec(spec: string | undefined): string | undefined {
   return spec;
 }
 
-function parseExtraJson(raw: string | undefined): Record<string, unknown> | undefined {
+function parseExtraJson(raw: string | undefined): Record<string, JsonValue> | undefined {
   if (!raw) return undefined;
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as Record<string, JsonValue>;
     return typeof parsed === 'object' && parsed !== null ? parsed : undefined;
   } catch {
     return undefined;
@@ -189,66 +193,27 @@ function resolveOpenAiConfig(opts: ReasonOptions): {
   apiKey: string;
   baseUrl: string;
   model: string;
-  extraBody: Record<string, unknown>;
+  extraBody: Record<string, JsonValue>;
   extraHeaders: Record<string, string>;
 } {
-  const apiKey = opts.apiKey ?? process.env.OPENAI_API_KEY;
+  const apiKey = opts.apiKey ?? process.env.AI_API_KEY;
   if (!apiKey) {
     throw new Error(
-      'Missing OPENAI_API_KEY env var. Set it to a key from any OpenAI-compatible provider (OpenAI, OpenRouter, Groq, your own gateway). Or use --reason-backend local-ai.'
+      'Missing AI_API_KEY env var. Set it for the configured free-provider endpoint, or use --reason-backend local-ai.'
     );
   }
-  const baseUrl = (opts.baseUrl ?? process.env.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE).replace(
+  const baseUrl = (opts.baseUrl ?? process.env.AI_BASE_URL ?? DEFAULT_OPENAI_BASE).replace(
     /\/$/,
     ''
   );
   const model =
-    normalizeModelSpec(opts.model) ?? normalizeModelSpec(process.env.OPENAI_MODEL) ?? 'gpt-4o-mini';
-  const extraBody = { ...parseExtraJson(process.env.OPENAI_EXTRA_BODY), ...(opts.extraBody ?? {}) };
+    normalizeModelSpec(opts.model) ?? normalizeModelSpec(process.env.AI_MODEL) ?? 'gemini-2.5-flash';
+  const extraBody = { ...parseExtraJson(process.env.AI_EXTRA_BODY), ...(opts.extraBody ?? {}) };
   const extraHeaders = {
-    ...parseExtraJson(process.env.OPENAI_EXTRA_HEADERS),
+    ...parseExtraJson(process.env.AI_EXTRA_HEADERS),
     ...(opts.extraHeaders ?? {}),
   } as Record<string, string>;
   return { apiKey, baseUrl, model, extraBody, extraHeaders };
-}
-
-function buildOpenAiBody(
-  model: string,
-  userMessage: string,
-  extraBody: Record<string, unknown>
-): string {
-  return JSON.stringify({
-    model,
-    stream: true,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userMessage },
-    ],
-    ...extraBody,
-  });
-}
-
-async function consumeOpenAiStream(
-  res: Response,
-  opts: ReasonOptions,
-  startedAt: number
-): Promise<ReasonResult> {
-  let acc = '';
-  let modelUsed: string | undefined;
-  for await (const data of sseDataLines(res)) {
-    try {
-      const parsed = JSON.parse(data);
-      modelUsed = parsed.model ?? modelUsed;
-      const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
-      if (delta) {
-        acc += delta;
-        opts.onChunk?.(delta);
-      }
-    } catch {
-      /* skip malformed chunk */
-    }
-  }
-  return { text: acc.trim(), modelUsed, durationMs: Date.now() - startedAt };
 }
 
 async function streamOpenAi(
@@ -257,26 +222,27 @@ async function streamOpenAi(
   startedAt: number
 ): Promise<ReasonResult> {
   const { apiKey, baseUrl, model, extraBody, extraHeaders } = resolveOpenAiConfig(opts);
-  const body = buildOpenAiBody(model, userMessage, extraBody);
-
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      ...extraHeaders,
-    },
-    body,
+  const provider = createOpenAICompatible({
+    name: 'psi-swarm-direct',
+    baseURL: baseUrl,
+    apiKey,
+    headers: extraHeaders,
   });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(
-      `OpenAI-compatible endpoint at ${baseUrl} returned HTTP ${res.status}: ${txt.slice(0, 400)}`
-    );
+  const result = streamText({
+    model: provider.chatModel(model),
+    system: SYSTEM_PROMPT,
+    prompt: userMessage,
+    ...(Object.keys(extraBody).length > 0
+      ? { providerOptions: { 'psi-swarm-direct': extraBody } }
+      : {}),
+    maxRetries: 2,
+  });
+  let text = '';
+  for await (const delta of result.textStream) {
+    text += delta;
+    opts.onChunk?.(delta);
   }
-  if (!res.body) throw new Error('endpoint returned no body');
-
-  return consumeOpenAiStream(res, opts, startedAt);
+  return { text: text.trim(), modelUsed: model, durationMs: Date.now() - startedAt };
 }
 
 async function streamLocalAi(
