@@ -1,6 +1,7 @@
-# psi-swarm
+# PSI Swarm
 
 > Distributional Lighthouse / PageSpeed audits with grounded performance analysis across the fleet.
+> Formerly psi-swarm (repo slug retained as an alias).
 
 ## Product
 
@@ -9,7 +10,7 @@
 - [Compare](https://performance.sassmaker.com/compare/): Compare two tagged swarms across percentile results
 - [Watchlist](https://performance.sassmaker.com/watchlist/): Review locally tracked performance regressions
 - [Demo gallery](https://performance.sassmaker.com/gallery/): Explore static before-and-after performance examples
-- [Changelog](https://performance.sassmaker.com/changelog/): Verified psi-swarm product and release history
+- [Changelog](https://performance.sassmaker.com/changelog/): Verified PSI Swarm product and release history
 
 ## Machine surfaces
 

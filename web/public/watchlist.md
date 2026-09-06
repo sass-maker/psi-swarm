@@ -1,6 +1,6 @@
 # Performance watchlist
 
-The watchlist is a local regression queue over psi-swarm's SQLite history. It compares recent measurements with a chosen baseline tag or earlier swarm.
+The watchlist is a local regression queue over PSI Swarm's SQLite history. It compares recent measurements with a chosen baseline tag or earlier swarm.
 
 ## What it tracks
 

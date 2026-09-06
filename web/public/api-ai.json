@@ -1,5 +1,6 @@
 {
-  "name": "psi-swarm",
+  "name": "PSI Swarm",
+  "alternateName": "psi-swarm",
   "version": "1",
   "url": "https://performance.sassmaker.com",
   "llms": "https://performance.sassmaker.com/llms.txt",
@@ -52,7 +53,7 @@
       "url": "https://performance.sassmaker.com/changelog/",
       "md": "https://performance.sassmaker.com/changelog.md",
       "kind": "static",
-      "description": "Verified psi-swarm product and release history"
+      "description": "Verified PSI Swarm product and release history"
     }
   ],
   "auth": {

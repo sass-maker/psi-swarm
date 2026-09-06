@@ -1,6 +1,6 @@
 # Compare performance swarms
 
-The compare view places two tagged psi-swarm runs side by side. It is intended for checking whether a code or deployment change improved or regressed performance.
+The compare view places two tagged PSI Swarm runs side by side. It is intended for checking whether a code or deployment change improved or regressed performance.
 
 ## Comparison evidence
 
@@ -9,4 +9,4 @@ The compare view places two tagged psi-swarm runs side by side. It is intended f
 - Tagged baseline and candidate runs from local history
 - Differences grounded in the stored run observations
 
-A comparison requires the local psi-swarm agent and its SQLite history. The public page is the controller; no private history is uploaded.
+A comparison requires the local PSI Swarm agent and its SQLite history. The public page is the controller; no private history is uploaded.
