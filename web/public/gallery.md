@@ -1,6 +1,6 @@
-# psi-swarm demo gallery
+# PSI Swarm demo gallery
 
-The demo gallery contains curated, static before-and-after examples of psi-swarm output. Unlike the controller pages, it works without a local agent.
+The demo gallery contains curated, static before-and-after examples of PSI Swarm output. Unlike the controller pages, it works without a local agent.
 
 ## What the examples demonstrate
 

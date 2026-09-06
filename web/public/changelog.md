@@ -1,4 +1,4 @@
-# psi-swarm changelog
+# PSI Swarm changelog
 
 Verified milestones for the local-first distributional Lighthouse tracker.
 
