@@ -253,3 +253,58 @@ reviewed; see the [public-release report](docs/verification/2026-09-07-public-re
 The owned report was moved out of the default report directory and temporary
 installation/database/browser resources were cleaned. Release authorization
 and controller qualification remain outstanding.
+
+
+### Source CLI persistence and local controller qualification
+
+At source f3886b736540c3222727c89e580628443c1a1888, the built CLI on Node
+22.23.1 completed two real desktop Lighthouse audits of a synthetic loopback
+page in 12.8 seconds. Default saving wrote two SQLite rows; a separate `history`
+process reopened both and reported the same rounded p75 LCP of 202 ms.
+A temporary Node preload redirected only `os.homedir()` into an isolated empty
+directory, so the real CLI persistence code ran without accessing normal user
+history or changing HOME. AI, CrUX, Ahrefs and trace insight were disabled for
+the CLI run; no model narrative was requested from the controller.
+
+The built local browser controller connected to a loopback agent, displayed the
+CLI's two saved runs, then initiated Quick check through its actual button and
+HTTP/SSE path. Two further real audits completed in 13.5 seconds, with a
+201 ms median and explicit directional/small-sample limits. SQLite held four
+rows. After stopping and restarting the agent, a fresh browser expanded the
+project/page history and displayed all four rows and the original CLI tags.
+See the [receipt](docs/verification/2026-09-07-source-history-controller.json),
+[completed controller](docs/verification/2026-09-07-source-controller.png) and
+[reopened history](docs/verification/2026-09-07-source-history.png).
+
+The linkless static fixture exposed an unsupported “Likely an auth-gated SPA”
+label. Empty discovery now reports only that no additional pages were found;
+it does not infer authentication. The source change is copy only.
+
+This qualifies the source-built local CLI/controller loop, not statistical
+reliability, the old v0.4.2 package, the hosted controller, all presets or AI
+reasoning. An approved corrected package release remains necessary. No new
+package dependency, production deployment or normal history write occurred.
+
+Validation: CLI/web builds, changed-component Biome check and docs validation
+passed. All owned servers/browser contexts stopped; isolated SQLite/artifacts
+and the temporary fixture directory were removed after retaining these receipts.
+
+
+### Clean source distribution check
+
+A fresh exact Git archive of f3886b7, with no pre-existing node_modules or build
+outputs, installed its frozen lockfile offline from the existing pnpm cache:
+660 packages reused, zero downloaded, 4.2 seconds. CLI and six-page web builds
+passed under Node 22.23.1/pnpm 10.33.2. The documented pnpm CLI invocation worked.
+The fresh build then ran one real desktop audit of a separate synthetic loopback
+page in 6.5 seconds, saved it through the native SQLite binding, and a separate
+history process reopened that run with the same rounded 202 ms LCP.
+The temporary checkout, server and isolated data were removed afterward.
+
+Verdict: scoped sharing is supported for the MIT-licensed, publicly available
+source-installed developer tool and local controller. This needs no owner
+credentials or unpublished dependencies. The offline check proves reproducible
+setup from cached public dependencies, not fresh registry/network availability.
+The old v0.4.2 package and hosted controller are separate qualification lanes;
+the corrected package still needs an approved release. No lifecycle reactivation
+or production publication is implied by this source-only verdict.

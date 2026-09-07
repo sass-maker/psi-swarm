@@ -753,8 +753,7 @@ function SuggestionsView({
   if (links.length === 0) {
     return (
       <div className="text-sm text-[var(--color-dim)] italic px-2">
-        No related pages found via static HTML, sitemap, or framework routes. Likely an auth-gated
-        SPA.
+        No additional pages discovered in static HTML, sitemap, or framework routes.
       </div>
     );
   }

@@ -55,6 +55,27 @@ That's it. Beautiful Ink-driven progress UI in the terminal, percentile tables, 
 Contributors can still clone the repository and run `pnpm run setup`; see the
 [development workflow](./docs/development/workflow.md).
 
+### Verified source option
+
+The MIT-licensed source is independently usable as a local developer tool.
+With Node 22.19–24, pnpm 10.33.2 and Chrome installed:
+
+```bash
+git clone https://github.com/sass-maker/psi-swarm.git
+cd psi-swarm
+pnpm install --frozen-lockfile
+pnpm run build:cli
+pnpm run cli -- run https://example.com --presets desktop --runs 2 --no-crux --no-ahrefs
+# Local controller: pnpm run serve, then pnpm run web in another terminal
+```
+
+The September 7 source receipt verifies clean-archive setup, real measurements,
+CLI persistence and local controller history. No owner credentials or unpublished
+dependencies are required. Two runs are directional execution evidence, not
+stable tail percentiles. The older **v0.4.2 package** still has the repaired-in-source
+percentile-verdict inconsistency and lacks `--output-path`; use current source
+for those fixes until a corrected package is released.
+
 ### Web UI flavour
 
 The deployed controller at <https://performance.sassmaker.com> guides first-time
@@ -200,13 +221,16 @@ pnpm run cli -- run https://example.com --tag after-deploy --insight-baseline be
 MIT — see [LICENSE](./LICENSE).
 
 
-## Remaining shareability qualification (2026-09-07)
+## Sharing scope and remaining qualification (2026-09-07)
 
 A source-built CLI completed real measurements and a visually inspected HTML
 export; a percentile-verdict bug is fixed. A fresh public v0.4.2 installation on
 Node 22.23.1 also completed two real audits and HTML export, and its packaged
 SQLite code passed isolated save/reopen. That release still has the old verdict
-bug. Before qualifying the distributed product, publish the checked repair and
-verify CLI history integration and the web controller connection. The repair
-requires an approved release; a pushed commit is not a package release.
+bug. Current source now also passes real CLI default-save → separate-process
+history and browser-controller quick check → SQLite → agent restart → history
+reopen, using isolated storage and a synthetic loopback target. Before qualifying
+the distributed product, publish the checked repair and repeat that workflow with
+the corrected package. An approved package release is still required for that
+distribution channel; it does not block the verified source-install path above.
 See PROJECT_STATUS.md for the measured report and exact local evidence.

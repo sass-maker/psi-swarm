@@ -10,4 +10,6 @@ is tracked only in [GitHub Issues](https://github.com/sass-maker/psi-swarm/issue
 Real CLI measurement and HTML report inspection passed; p75 verdict inconsistency
 is repaired with a threshold regression test. Full CLI suite passes on supported
 Node 22.23.1. See PROJECT_STATUS.md for evidence and remaining distribution,
-history and controller qualification gates.
+corrected-package and hosted-controller qualification gates. Current source CLI
+save/history and local browser-controller run/restart/history now pass with
+isolated synthetic storage.

@@ -1,0 +1,44 @@
+{
+  "source": "f3886b736540c3222727c89e580628443c1a1888",
+  "runtime": "Node 22.23.1 for CLI and agent; existing Node 26.8.1 build launcher emits engine warning",
+  "target": "synthetic loopback HTML with no external assets",
+  "storageIsolation": "Temporary os.homedir override via Node preload; actual HistoryDB code and SQLite binding, no normal user history access",
+  "cli": {
+    "runs": 2,
+    "successful": 2,
+    "elapsedSeconds": 12.8,
+    "historySeparateProcess": true,
+    "roundedP75LcpMs": 202,
+    "tag": "local-core-proof"
+  },
+  "controller": {
+    "realButtonAndHttpSse": true,
+    "runs": 2,
+    "successful": 2,
+    "elapsedSeconds": 13.5,
+    "medianLcpMs": 201,
+    "persistedTotal": 4,
+    "agentRestartAndFreshBrowserHistory": true
+  },
+  "limits": [
+    "Source-built local only; old v0.4.2 release unchanged",
+    "Two audits per invocation do not qualify tail statistics",
+    "Hosted controller, model reasoning and other presets untested"
+  ],
+  "cleanup": "Owned target, agent and static-controller servers stopped; browser contexts closed; temporary synthetic home, SQLite database, capture artifacts and target removed. Normal user history was untouched.",
+  "cleanSourceSetup": {
+    "revision": "f3886b736540c3222727c89e580628443c1a1888",
+    "node": "22.23.1",
+    "pnpm": "10.33.2",
+    "frozenOfflineInstall": true,
+    "packagesReused": 660,
+    "downloaded": 0,
+    "installSeconds": 4.2,
+    "cliBuild": true,
+    "webBuildPages": 6,
+    "freshRealAuditSavedAndReopened": true,
+    "auditSeconds": 6.5,
+    "roundedLcpMs": 202
+  },
+  "verdict": "Qualified for source-installed local developer-tool sharing under MIT; old package and hosted controller remain separate unqualified lanes."
+}
