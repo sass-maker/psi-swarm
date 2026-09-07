@@ -119,12 +119,9 @@ function distributionStrip(results: RunResult[]): string {
 }
 
 function overallVerdict(allResults: RunResult[]): string {
-  const lcps = allResults
-    .map((r) => r.metrics?.lcp)
-    .filter((v): v is number => typeof v === 'number')
-    .sort((a, b) => a - b);
-  if (lcps.length === 0) return '';
-  const p75 = lcps[Math.floor(0.75 * (lcps.length - 1))];
+  const stats = computeStats(allResults.map((r) => r.metrics?.lcp ?? NaN));
+  if (!stats) return '';
+  const p75 = stats.p75;
   const verdict =
     p75 <= 2500
       ? chalk.green('GOOD')

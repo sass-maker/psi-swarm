@@ -208,3 +208,29 @@ Fleet & tooling:
 Open work is tracked only in [GitHub Issues](https://github.com/sass-maker/psi-swarm/issues).
 An open issue is a to-do, a linked pull request is in progress, and merge plus
 issue closure makes the work done.
+
+
+## 2026-09-07 — Real CLI measurement and percentile verdict repair
+
+A source build completed two serial desktop Lighthouse runs against example.com,
+then exported a readable standalone HTML report. This exposed inconsistent p75
+calculation: the terminal verdict floored a rank while the table interpolated.
+The verdict now uses computeStats, matching the table. A 2000/3000ms regression
+case proves the verdict is 2750ms (needs work), not the previous 2000ms pass.
+
+After rebuilding, two real runs completed in 13 seconds: LCP range 209–213ms,
+p75 212ms, CLS and TBT zero. The table and terminal verdict agree. The report
+was opened and visually inspected in Chrome; see
+[retained report](docs/verification/2026-09-07-cli-report.html). This tiny sample
+qualifies execution/reporting only, not statistical reliability or field performance.
+
+All 54 CLI tests pass on Node 22.23.1; source builds on Node 24.20.0. The local
+SQLite binary was built for Node 22, so running database tests on Node 24/26
+requires rebuilding that existing native dependency. Node 26 is unsupported.
+No history writes, AI reasoning, Ahrefs or CrUX calls were enabled. Temporary
+reports and browser tab were cleaned. Current release package installation,
+history persistence, controller UI and publication of this fix remain unqualified.
+
+The documented `--output-path` flag is now registered with the CLI parser; the
+existing report writer already supports it. Previously the documented command
+failed as an unknown option.

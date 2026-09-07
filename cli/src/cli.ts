@@ -83,6 +83,7 @@ program
   .option('--no-crux', 'Skip the CrUX real-user p75 lookup')
   .option('--no-ahrefs', 'Skip Ahrefs Domain Rating lookup (custom domains only)')
   .option('--output <fmt>', 'Also write a report file: html', undefined)
+  .option('--output-path <path>', 'Destination for the HTML report')
   .option('--no-insight', 'Skip trace-insight export and derived diagnosis')
   .option('--insight-baseline <tag>', 'Compare derived insight against a tagged baseline swarm')
   .action(async (url: string, opts) => {

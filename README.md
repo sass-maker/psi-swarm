@@ -198,3 +198,13 @@ pnpm run cli -- run https://example.com --tag after-deploy --insight-baseline be
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+
+## Remaining shareability qualification (2026-09-07)
+
+A source-built CLI completed real measurements and a visually inspected HTML
+export; a percentile-verdict bug is fixed. Before qualifying the distributed
+product, verify a fresh release-package installation with its supported Node
+version, history save/reload, and the web controller connection. The repair
+requires an approved release; a pushed commit is not a package release.
+See PROJECT_STATUS.md for the measured report and exact local evidence.
