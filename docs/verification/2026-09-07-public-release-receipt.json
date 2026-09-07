@@ -1,0 +1,29 @@
+{
+  "release": "v0.4.2",
+  "asset": "psi-swarm-0.4.2.tgz",
+  "sha256": "7d23fbd4c9f315d1c5f3184741f317597d2897b55ba0bf3a087e60f792f8383e",
+  "runtime": "Node 22.23.1; npm 10.9.8",
+  "installation": "Fresh npm global installation into a temporary explicit prefix;219 packages; version0.4.2 verified.",
+  "measurement": {
+    "target": "https://example.com",
+    "presets": ["desktop"],
+    "runs": 2,
+    "successfulRuns": 2,
+    "elapsedSeconds": 13.4,
+    "lcpRangeMs": [206, 207],
+    "tableP75Ms": 207,
+    "terminalVerdictP75Ms": 206,
+    "limitation": "Rounded observed values; old release still uses a different percentile rule for verdict. Two runs prove execution, not statistical reliability."
+  },
+  "history": "Packaged HistoryDB with isolated SQLite file: synthetic row insert, close, reopen and history read passed; not CLI default history integration.",
+  "report": "Actual package HTML export rendered headlessly and visually reviewed.",
+  "excluded": [
+    "AI reasoning",
+    "CrUX",
+    "Ahrefs",
+    "user history writes",
+    "web controller qualification",
+    "new release"
+  ],
+  "cleanup": "Headless browser and CLI exited; only generated report moved from default reports directory; temporary installation/database removed after retaining evidence."
+}

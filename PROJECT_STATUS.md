@@ -234,3 +234,22 @@ history persistence, controller UI and publication of this fix remain unqualifie
 The documented `--output-path` flag is now registered with the CLI parser; the
 existing report writer already supports it. Previously the documented command
 failed as an unknown option.
+
+### Public release installation follow-up
+
+The actual v0.4.2 GitHub release asset installed into an isolated temporary npm
+prefix on Node 22.23.1/npm 10.9.8. Version/help worked and two serial desktop
+audits completed in 13.4 seconds. The HTML table reported p75 LCP 207ms while the
+terminal verdict reported 206ms, confirming the source percentile fix is not
+yet in the distributed package. Its help also lacks `--output-path`.
+
+The packaged SQLite native binding passed synthetic insert, close, reopen and
+history read using an explicit temporary database. This does not qualify the
+CLI's default history integration or the web controller. No real user history,
+AI, CrUX or Ahrefs was used. The report was rendered headlessly and visually
+reviewed; see the [public-release report](docs/verification/2026-09-07-public-release-report.html),
+[screenshot](docs/verification/2026-09-07-public-release-report.png) and
+[receipt](docs/verification/2026-09-07-public-release-receipt.json).
+The owned report was moved out of the default report directory and temporary
+installation/database/browser resources were cleaned. Release authorization
+and controller qualification remain outstanding.

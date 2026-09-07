@@ -203,8 +203,10 @@ MIT — see [LICENSE](./LICENSE).
 ## Remaining shareability qualification (2026-09-07)
 
 A source-built CLI completed real measurements and a visually inspected HTML
-export; a percentile-verdict bug is fixed. Before qualifying the distributed
-product, verify a fresh release-package installation with its supported Node
-version, history save/reload, and the web controller connection. The repair
+export; a percentile-verdict bug is fixed. A fresh public v0.4.2 installation on
+Node 22.23.1 also completed two real audits and HTML export, and its packaged
+SQLite code passed isolated save/reopen. That release still has the old verdict
+bug. Before qualifying the distributed product, publish the checked repair and
+verify CLI history integration and the web controller connection. The repair
 requires an approved release; a pushed commit is not a package release.
 See PROJECT_STATUS.md for the measured report and exact local evidence.
