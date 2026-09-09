@@ -34,4 +34,18 @@ jobs:
           python-version: "3.11"
       - run: pnpm install --frozen-lockfile
       - run: pip install lizard==1.23.0
-      - run: pnpm run quality
+      - run: pnpm run format:check
+      - run: pnpm run quality:lint
+      - run: pnpm run build
+        working-directory: cli
+      - run: pnpm run build
+        working-directory: web
+      - run: pnpm run test:coverage
+        working-directory: cli
+      - run: pnpm run quality:unused
+      - run: pnpm run quality:complexity
+      - run: pnpm run quality:duplication
+      - run: pnpm run quality:cycles
+      - run: pnpm run quality:dependencies
+      - run: pnpm run quality:suppressions
+      - run: pnpm run docs:check
